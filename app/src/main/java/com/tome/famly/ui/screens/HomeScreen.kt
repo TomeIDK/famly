@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -26,18 +27,25 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.tome.famly.ui.theme.FamlyTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material3.Badge
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tome.famly.R
+import com.tome.famly.ui.theme.CustomOrange
 import com.tome.famly.ui.theme.LightBlue
 
 class HomeScreen : ComponentActivity() {
@@ -46,7 +54,11 @@ class HomeScreen : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FamlyTheme {
-                Scaffold() { innerPadding ->
+                Scaffold(
+                    topBar = {
+                        TopBar()
+                    }
+                ) { innerPadding ->
                     Home( modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -60,34 +72,40 @@ fun Home(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(Color(0xFFFCFAF6))
             .padding(10.dp)
     ) {
-        TopBar()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
-                .background(Color(0xFFFCFAF6)),
+                .padding(vertical = 24.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            SmallCard()
-            SmallCard()
-            SmallCard()
+            SmallCard(number = 12, bottomText = "To Buy", color = LightBlue)
+            SmallCard(number = 5, bottomText = "Chores Due", color = CustomOrange)
+            SmallCard(number = 3, bottomText = "Meals Planned", color = LightBlue)
         }
-        WideCard()
+        WideCard(title = "Shopping Lists", subtitle = "Colruyt", icon = Icons.Outlined.ShoppingCart, "3 active", color = LightBlue)
+        WideCard(title = "Chores & Tasks", subtitle = "Feed the cat ● Clean kitchen", icon = Icons.Outlined.CheckCircle, "3 active", color = CustomOrange)
+        WideCard(title = "Meal Planning", subtitle = "Tonight: Mongolian Beef", icon = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24), "This week", color = LightBlue)
     }
 }
 
 
 @Composable
-fun TopBar(currentFamily: String = "Famly Pas") {
+fun TopBar(currentFamily: String = "Pas Famly") {
     Row( modifier = Modifier
         .fillMaxWidth()
-        .padding(9.dp),
+        .background(Color.White)
+        .statusBarsPadding()
+        .height(64.dp)
+        .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = currentFamily,
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            fontSize = 18.sp
         )
         Icon(
             Icons.Default.KeyboardArrowDown,
@@ -98,9 +116,10 @@ fun TopBar(currentFamily: String = "Famly Pas") {
 }
 
 @Composable
-fun SmallCard(number: Int = 5, bottomText: String = "To Buy") {
+fun SmallCard(number: Int, bottomText: String, color: Color) {
     OutlinedCard(
-        modifier = Modifier.size(width = 100.dp, height = 120.dp)
+        modifier = Modifier.size(width = 100.dp, height = 120.dp),
+        elevation = CardDefaults.outlinedCardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -111,24 +130,26 @@ fun SmallCard(number: Int = 5, bottomText: String = "To Buy") {
                 text = number.toString(),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Medium,
-                color = LightBlue
+                color = color
 
             )
             Text(
                 text = bottomText,
                 style = MaterialTheme.typography.labelMedium,
-                color = LightBlue
+                color = Color(0xFF757575),
+                fontWeight = FontWeight.W400
             )
         }
     }
 }
 
 @Composable
-fun WideCard(title: String = "Colruyt") {
+fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: String, color: Color) {
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.outlinedCardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -137,23 +158,23 @@ fun WideCard(title: String = "Colruyt") {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Outlined.ShoppingCart,
+                icon,
                 contentDescription = null,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0x222062CE), shape = RectangleShape)
+                    .background(color.copy(alpha = 0.2f), shape = RectangleShape)
                     .padding(8.dp),
-                tint = LightBlue,
+                tint = color,
             )
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(16.dp)
             ) {
-                Text(text = "Shopping Lists",
+                Text(text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold)
-                Text(text = "$title ● 12 items left",
+                Text(text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF757575))
                 LinearProgressIndicator(
@@ -161,7 +182,7 @@ fun WideCard(title: String = "Colruyt") {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp),
-                    color = LightBlue,
+                    color = color,
                 )
             }
             Box(
@@ -170,7 +191,8 @@ fun WideCard(title: String = "Colruyt") {
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "3 active",
+                    text = badgeText,
+                    fontWeight = FontWeight.Medium,
                     fontSize = 12.sp
                 )
             }
@@ -184,6 +206,8 @@ fun WideCard(title: String = "Colruyt") {
 @Composable
 fun HomeScreenPreview() {
     FamlyTheme {
-        Home()
+        Scaffold(topBar = { TopBar() }) {
+            Home(Modifier.padding(it))
+        }
     }
 }
