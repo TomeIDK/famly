@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -33,13 +36,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,7 +60,7 @@ class HomeScreen : ComponentActivity() {
                         TopBar()
                     }
                 ) { innerPadding ->
-                    Home( modifier = Modifier.padding(innerPadding)
+                    Home( modifier = Modifier.fillMaxSize().padding(innerPadding)
                     )
                 }
             }
@@ -69,26 +70,75 @@ class HomeScreen : ComponentActivity() {
 
 @Composable
 fun Home(modifier: Modifier = Modifier) {
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFFCFAF6))
-            .padding(10.dp)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .padding(vertical = 24.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-        ) {
-            SmallCard(number = 12, bottomText = "To Buy", color = LightBlue)
-            SmallCard(number = 5, bottomText = "Chores Due", color = CustomOrange)
-            SmallCard(number = 3, bottomText = "Meals Planned", color = LightBlue)
+        // Top Cards
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                SmallCard(number = 12, bottomText = "To Buy", color = LightBlue)
+                SmallCard(number = 5, bottomText = "Chores Due", color = CustomOrange)
+                SmallCard(number = 3, bottomText = "Meals Planned", color = LightBlue)
+            }
         }
-        WideCard(title = "Shopping Lists", subtitle = "Colruyt", icon = Icons.Outlined.ShoppingCart, "3 active", color = LightBlue)
-        WideCard(title = "Chores & Tasks", subtitle = "Feed the cat ● Clean kitchen", icon = Icons.Outlined.CheckCircle, "3 active", color = CustomOrange)
-        WideCard(title = "Meal Planning", subtitle = "Tonight: Mongolian Beef", icon = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24), "This week", color = LightBlue)
+
+
+        // Wide Cards
+        item {
+            WideCard(
+                title = "Shopping Lists",
+                subtitle = "Colruyt",
+                icon = Icons.Outlined.ShoppingCart,
+                "3 active",
+                color = LightBlue
+            )
+        }
+        item {
+            WideCard(
+                title = "Chores & Tasks",
+                subtitle = "Feed the cat ● Clean kitchen",
+                icon = Icons.Outlined.CheckCircle,
+                "3 active",
+                color = CustomOrange
+            )
+        }
+        item {
+            WideCard(
+                title = "Meal Planning",
+                subtitle = "Tonight: Mongolian Beef",
+                icon = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24),
+                "This week",
+                color = LightBlue
+            )
+        }
+
+        // Family Members
+        item {
+            Text(
+                "FAMILY MEMBERS",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF757575)
+            )
+        }
+
+        items(listOf(
+            "Cedric Pas" to "Admin",
+            "Sandra Pas" to "Member",
+            "Filip Pas" to "Member",
+            "Angels Dubois" to "Member"
+        )) { (name, role) ->
+            FamilyMemberCard(name, email = "${name.lowercase().replace(" ", "")}@gmail.com", role = role)
+        }
     }
 }
 
@@ -148,7 +198,7 @@ fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: Stri
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         elevation = CardDefaults.outlinedCardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -169,12 +219,13 @@ fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: Stri
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp)
             ) {
                 Text(text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold)
                 Text(text = subtitle,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF757575))
                 LinearProgressIndicator(
@@ -198,6 +249,42 @@ fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: Stri
             }
         }
 
+    }
+}
+
+@Composable
+fun FamilyMemberCard(name: String, email: String, role: String) {
+    val badgeColor = if (role == "Admin") LightBlue else Color(0xFFFCFAF6)
+    val badgeTextColor = if (role == "Admin") Color(0xFFFFFFFF) else Color(0xFF000000)
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 6.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(text = name, style = MaterialTheme.typography.titleMedium, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    text = email,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF757575)
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .background(badgeColor, shape = RoundedCornerShape(12.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = role,
+                    color = badgeTextColor,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 12.sp
+                )
+            }
+        }
     }
 }
 
