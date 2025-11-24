@@ -13,3 +13,8 @@ val Pink40 = Color(0xFF7D5260)
 val LightBlue = Color(0xFF2062CE)
 
 val CustomOrange = Color(0xFFFE886A)
+
+val BackgroundColor = Color(0xFFFCFAF6)
+val MutedTextColor = Color(0xFF757575)
+
+val CheckGreen = Color(0xFF4CAF50)

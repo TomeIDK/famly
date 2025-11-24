@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,9 +47,14 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.rememberNavController
 import com.tome.famly.R
+import com.tome.famly.ui.navigation.AppNavHost
+import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.CustomOrange
 import com.tome.famly.ui.theme.LightBlue
+import com.tome.famly.ui.theme.MutedTextColor
+
 
 class HomeScreen : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,12 +62,21 @@ class HomeScreen : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FamlyTheme {
+                val navController = rememberNavController()
+
+                AppNavHost(navController = navController)
                 Scaffold(
                     topBar = {
-                        TopBar()
+                        HomeTopBar()
                     }
                 ) { innerPadding ->
-                    Home( modifier = Modifier.fillMaxSize().padding(innerPadding)
+                    Home(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        onShoppingListsClick = {
+                            navController.navigate("shoppingLists")
+                        }
                     )
                 }
             }
@@ -69,11 +85,14 @@ class HomeScreen : ComponentActivity() {
 }
 
 @Composable
-fun Home(modifier: Modifier = Modifier) {
+fun Home(
+    modifier: Modifier = Modifier,
+    onShoppingListsClick: () -> Unit
+    ) {
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFFCFAF6))
+            .background(BackgroundColor)
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -93,16 +112,18 @@ fun Home(modifier: Modifier = Modifier) {
         }
 
 
-        // Wide Cards
+        // Shopping Lists
         item {
             WideCard(
                 title = "Shopping Lists",
                 subtitle = "Colruyt",
                 icon = Icons.Outlined.ShoppingCart,
                 "3 active",
-                color = LightBlue
+                color = LightBlue,
+                onClick = onShoppingListsClick
             )
         }
+        // Tasks
         item {
             WideCard(
                 title = "Chores & Tasks",
@@ -112,6 +133,7 @@ fun Home(modifier: Modifier = Modifier) {
                 color = CustomOrange
             )
         }
+        // Meal Planning
         item {
             WideCard(
                 title = "Meal Planning",
@@ -127,7 +149,7 @@ fun Home(modifier: Modifier = Modifier) {
             Text(
                 "FAMILY MEMBERS",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFF757575)
+                color = MutedTextColor
             )
         }
 
@@ -135,33 +157,13 @@ fun Home(modifier: Modifier = Modifier) {
             "Cedric Pas" to "Admin",
             "Sandra Pas" to "Member",
             "Filip Pas" to "Member",
-            "Angels Dubois" to "Member"
+            "Angels Dubois" to "Member",
+            "Angels Dubois" to "Member",
+            "Angels Dubois" to "Member",
+            "Angels Dubois" to "Member",
         )) { (name, role) ->
             FamilyMemberCard(name, email = "${name.lowercase().replace(" ", "")}@gmail.com", role = role)
         }
-    }
-}
-
-
-@Composable
-fun TopBar(currentFamily: String = "Pas Famly") {
-    Row( modifier = Modifier
-        .fillMaxWidth()
-        .background(Color.White)
-        .statusBarsPadding()
-        .height(64.dp)
-        .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = currentFamily,
-            style = MaterialTheme.typography.titleMedium,
-            fontSize = 18.sp
-        )
-        Icon(
-            Icons.Default.KeyboardArrowDown,
-            contentDescription = null,
-            tint = Color(0xFF757575)
-        )
     }
 }
 
@@ -186,7 +188,7 @@ fun SmallCard(number: Int, bottomText: String, color: Color) {
             Text(
                 text = bottomText,
                 style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF757575),
+                color = MutedTextColor,
                 fontWeight = FontWeight.W400
             )
         }
@@ -194,11 +196,12 @@ fun SmallCard(number: Int, bottomText: String, color: Color) {
 }
 
 @Composable
-fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: String, color: Color) {
+fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: String, color: Color, onClick: () -> Unit = {}) {
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
         elevation = CardDefaults.outlinedCardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -227,7 +230,7 @@ fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: Stri
                 Text(text = subtitle,
                     modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF757575))
+                    color = MutedTextColor)
                 LinearProgressIndicator(
                     progress = { .7f },
                     modifier = Modifier
@@ -238,7 +241,7 @@ fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: Stri
             }
             Box(
                 modifier = Modifier
-                    .background(Color(0xFFFCFAF6), shape = RoundedCornerShape(12.dp))
+                    .background(BackgroundColor, shape = RoundedCornerShape(12.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
@@ -254,8 +257,8 @@ fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: Stri
 
 @Composable
 fun FamilyMemberCard(name: String, email: String, role: String) {
-    val badgeColor = if (role == "Admin") LightBlue else Color(0xFFFCFAF6)
-    val badgeTextColor = if (role == "Admin") Color(0xFFFFFFFF) else Color(0xFF000000)
+    val badgeColor = if (role == "Admin") LightBlue else BackgroundColor
+    val badgeTextColor = if (role == "Admin") Color.White else Color.Black
     OutlinedCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
     ) {
@@ -268,7 +271,7 @@ fun FamilyMemberCard(name: String, email: String, role: String) {
                 Text(
                     text = email,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF757575)
+                    color = MutedTextColor
                 )
             }
             Spacer(Modifier.weight(1f))
@@ -288,13 +291,38 @@ fun FamilyMemberCard(name: String, email: String, role: String) {
     }
 }
 
+@Composable
+fun HomeTopBar(currentFamily: String = "Pas Famly") {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp)
+            .background(MaterialTheme.colorScheme.surface)
+            .statusBarsPadding()
+            .height(56.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = currentFamily,
+            style = MaterialTheme.typography.titleMedium,
+            fontSize = 18.sp
+        )
+        Icon(
+            Icons.Default.KeyboardArrowDown,
+            contentDescription = null,
+            tint = MutedTextColor
+        )
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     FamlyTheme {
-        Scaffold(topBar = { TopBar() }) {
-            Home(Modifier.padding(it))
+        Scaffold(topBar = { HomeTopBar() }) {
+            Home(Modifier.padding(it), onShoppingListsClick = {})
         }
     }
 }
