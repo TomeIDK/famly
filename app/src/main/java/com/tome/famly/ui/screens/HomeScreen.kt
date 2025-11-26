@@ -65,20 +65,6 @@ class HomeScreen : ComponentActivity() {
                 val navController = rememberNavController()
 
                 AppNavHost(navController = navController)
-                Scaffold(
-                    topBar = {
-                        HomeTopBar()
-                    }
-                ) { innerPadding ->
-                    Home(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
-                        onShoppingListsClick = {
-                            navController.navigate("shoppingLists")
-                        }
-                    )
-                }
             }
         }
     }
@@ -89,80 +75,93 @@ fun Home(
     modifier: Modifier = Modifier,
     onShoppingListsClick: () -> Unit
     ) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(BackgroundColor)
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Top Cards
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
-                    .padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                SmallCard(number = 12, bottomText = "To Buy", color = LightBlue)
-                SmallCard(number = 5, bottomText = "Chores Due", color = CustomOrange)
-                SmallCard(number = 3, bottomText = "Meals Planned", color = LightBlue)
+    Scaffold(
+        topBar = {
+            HomeTopBar()
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .background(BackgroundColor)
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Top Cards
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    SmallCard(number = 12, bottomText = "To Buy", color = LightBlue)
+                    SmallCard(number = 5, bottomText = "Chores Due", color = CustomOrange)
+                    SmallCard(number = 3, bottomText = "Meals Planned", color = LightBlue)
+                }
             }
-        }
 
 
-        // Shopping Lists
-        item {
-            WideCard(
-                title = "Shopping Lists",
-                subtitle = "Colruyt",
-                icon = Icons.Outlined.ShoppingCart,
-                "3 active",
-                color = LightBlue,
-                onClick = onShoppingListsClick
-            )
-        }
-        // Tasks
-        item {
-            WideCard(
-                title = "Chores & Tasks",
-                subtitle = "Feed the cat ● Clean kitchen",
-                icon = Icons.Outlined.CheckCircle,
-                "3 active",
-                color = CustomOrange
-            )
-        }
-        // Meal Planning
-        item {
-            WideCard(
-                title = "Meal Planning",
-                subtitle = "Tonight: Mongolian Beef",
-                icon = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24),
-                "This week",
-                color = LightBlue
-            )
-        }
+            // Shopping Lists
+            item {
+                WideCard(
+                    title = "Shopping Lists",
+                    subtitle = "Colruyt",
+                    icon = Icons.Outlined.ShoppingCart,
+                    "3 active",
+                    color = LightBlue,
+                    onClick = onShoppingListsClick
+                )
+            }
+            // Tasks
+            item {
+                WideCard(
+                    title = "Chores & Tasks",
+                    subtitle = "Feed the cat ● Clean kitchen",
+                    icon = Icons.Outlined.CheckCircle,
+                    "3 active",
+                    color = CustomOrange
+                )
+            }
+            // Meal Planning
+            item {
+                WideCard(
+                    title = "Meal Planning",
+                    subtitle = "Tonight: Mongolian Beef",
+                    icon = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24),
+                    "This week",
+                    color = LightBlue
+                )
+            }
 
-        // Family Members
-        item {
-            Text(
-                "FAMILY MEMBERS",
-                style = MaterialTheme.typography.titleMedium,
-                color = MutedTextColor
-            )
-        }
+            // Family Members
+            item {
+                Text(
+                    "FAMILY MEMBERS",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MutedTextColor
+                )
+            }
 
-        items(listOf(
-            "Cedric Pas" to "Admin",
-            "Sandra Pas" to "Member",
-            "Filip Pas" to "Member",
-            "Angels Dubois" to "Member",
-            "Angels Dubois" to "Member",
-            "Angels Dubois" to "Member",
-            "Angels Dubois" to "Member",
-        )) { (name, role) ->
-            FamilyMemberCard(name, email = "${name.lowercase().replace(" ", "")}@gmail.com", role = role)
+            items(
+                listOf(
+                    "Cedric Pas" to "Admin",
+                    "Sandra Pas" to "Member",
+                    "Filip Pas" to "Member",
+                    "Angels Dubois" to "Member",
+                    "Angels Dubois" to "Member",
+                    "Angels Dubois" to "Member",
+                    "Angels Dubois" to "Member",
+                )
+            ) { (name, role) ->
+                FamilyMemberCard(
+                    name,
+                    email = "${name.lowercase().replace(" ", "")}@gmail.com",
+                    role = role
+                )
+            }
         }
     }
 }
@@ -260,7 +259,9 @@ fun FamilyMemberCard(name: String, email: String, role: String) {
     val badgeColor = if (role == "Admin") LightBlue else BackgroundColor
     val badgeTextColor = if (role == "Admin") Color.White else Color.Black
     OutlinedCard(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
     ) {
         Row(
             modifier = Modifier.padding(vertical = 6.dp, horizontal = 16.dp),

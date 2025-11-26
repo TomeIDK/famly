@@ -2,17 +2,20 @@ package com.tome.famly.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -31,37 +34,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tome.famly.ui.components.TopBar
 import com.tome.famly.ui.theme.BackgroundColor
+import com.tome.famly.ui.theme.CustomOrange
 import com.tome.famly.ui.theme.FamlyTheme
-import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
-import kotlin.random.Random
-
-fun randomColor(): Color {
-    val base = 0.25f
-    val range = 0.6f
-    return Color(
-        red = base + Random.nextFloat() * range,
-        green = base + Random.nextFloat() * range,
-        blue = base + Random.nextFloat() * range,
-        alpha = 1f
-    )
-}
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration.Companion.hours
 
 @Composable
-fun ShoppingListsScreen(onBackClick: (() -> Unit)?) {
+fun TasksListsScreen(onBackClick: (() -> Unit)?) {
     Scaffold(
         topBar = {
             TopBar(
-                title = "Shopping Lists",
-                titleIcon = Icons.Outlined.ShoppingCart,
-                titleIconColor = LightBlue,
+                title = "Task Lists",
+                titleIcon = Icons.Outlined.CheckCircle,
+                titleIconColor = CustomOrange,
                 onBackClick = onBackClick
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { },
-                containerColor = LightBlue,
+                containerColor = CustomOrange,
                 contentColor = Color.White,
                 shape = CircleShape
             ) {
@@ -69,26 +68,29 @@ fun ShoppingListsScreen(onBackClick: (() -> Unit)?) {
             }
         }
     ) { innerPadding ->
-        ShoppingLists( modifier = Modifier.padding(innerPadding))
+        TaskLists( modifier = Modifier.padding(innerPadding))
     }
 }
 
 @Composable
-fun ShoppingLists(modifier: Modifier = Modifier) {
+fun TaskLists(modifier: Modifier = Modifier){
     LazyColumn(modifier = modifier.fillMaxSize().background(BackgroundColor)) {
         items(10) {
-            ShoppingListCard("Colruyt", 6)
+            TaskCard("Feed the cats", 2, Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.plus(1,
+                DateTimeUnit.DAY).atStartOfDayIn(TimeZone.currentSystemDefault()))
         }
         item {
-            ShoppingListCard("Aldi", 0)
+            TaskCard("Weekly House Chores", 0, Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.plus(1,
+                DateTimeUnit.DAY).atStartOfDayIn(TimeZone.currentSystemDefault()))
 
         }
     }
 }
 
-
 @Composable
-fun ShoppingListCard(name: String, items: Int) {
+fun TaskCard(name: String, items: Int, resetDateTime: Instant) {
+    val now = Clock.System.now()
+    val diff = resetDateTime - now
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -104,18 +106,47 @@ fun ShoppingListCard(name: String, items: Int) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Outlined.ShoppingCart,
+                Icons.Outlined.CheckCircle,
                 contentDescription = null,
                 modifier = Modifier
                     .padding(8.dp),
                 tint = randomColor(),
             )
-            Text(
-                text = name,
-                style = MaterialTheme.typography.titleSmall,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.W500
-            )
+            Column {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.W500
+                )
+
+                Row {
+                    Icon(
+                        Icons.Filled.DateRange,
+                        contentDescription = null,
+                        tint = MutedTextColor,
+                        modifier = Modifier.size(16.dp)
+                        )
+                    Text(
+                        text = if (diff < 24.hours) {
+                            val hours = diff.inWholeHours
+                            "Resets in $hours hours"
+                        } else {
+                            val day = resetDateTime
+                                .toLocalDateTime(TimeZone.currentSystemDefault())
+                                .date
+                                .dayOfWeek
+                                .name
+                            "Resets on $day"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedTextColor,
+                        modifier = Modifier.padding(start = 2.dp)
+
+                    )
+                }
+            }
+
             Spacer(Modifier.weight(1f))
             if (items > 0) {
                 Box(
@@ -133,7 +164,7 @@ fun ShoppingListCard(name: String, items: Int) {
             } else {
                 Box(
                     modifier = Modifier
-                        .background(LightBlue, shape = CircleShape)
+                        .background(CustomOrange, shape = CircleShape)
                         .padding(vertical = 2.dp, horizontal = 2.dp),
                 ) {
                     Icon(
@@ -148,11 +179,10 @@ fun ShoppingListCard(name: String, items: Int) {
     }
 }
 
-
 @Preview(showBackground = true)
 @Composable
-fun ShoppingListsScreenPreview() {
+fun TasksListsScreen() {
     FamlyTheme {
-        ShoppingListsScreen(onBackClick = {})
+        TasksListsScreen(onBackClick = {})
     }
 }

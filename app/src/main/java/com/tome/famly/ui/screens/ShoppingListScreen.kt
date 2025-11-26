@@ -44,7 +44,7 @@ import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
 
 @Composable
-fun ShoppingListScreen(onBackClick: () -> Unit) {
+fun ShoppingListScreen(onBackClick: (() -> Unit)?) {
     Scaffold(
         topBar = {
             TopBar(
