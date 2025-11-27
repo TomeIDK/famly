@@ -2,7 +2,6 @@ package com.tome.famly.data.model
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -23,6 +22,7 @@ data class TaskList(
             ResetInterval.MONTHLY -> now.plus(1, DateTimeUnit.MONTH)
             ResetInterval.CUSTOM -> now
         }
+
         return nextDate.atStartOfDayIn(TimeZone.currentSystemDefault()).toLocalDateTime(TimeZone.currentSystemDefault())
     }
 }

@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.rememberNavController
 import com.tome.famly.R
+import com.tome.famly.data.mock.mockShoppingLists
+import com.tome.famly.data.mock.mockTasks
 import com.tome.famly.ui.navigation.AppNavHost
 import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.CustomOrange
@@ -76,6 +78,16 @@ fun Home(
     onShoppingListsClick: () -> Unit,
     onTasksListsClick: () -> Unit
     ) {
+
+    val toBuy: Int = mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { !it.isChecked } }
+    val choresDue: Int = mockTasks.sumOf { taskList ->  taskList.items.count { !it.isChecked } }
+    val firstShoppingListWithUnchecked = mockShoppingLists.firstOrNull { list ->
+        list.items.any { !it.isChecked }
+    }
+    val firstTaskListWithUnchecked = mockTasks.firstOrNull { list ->
+        list.items.any { !it.isChecked }
+    }
+
     Scaffold(
         topBar = {
             HomeTopBar()
@@ -98,8 +110,8 @@ fun Home(
                         .padding(vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    SmallCard(number = 12, bottomText = "To Buy", color = LightBlue)
-                    SmallCard(number = 5, bottomText = "Chores Due", color = CustomOrange)
+                    SmallCard(number = toBuy, bottomText = "To Buy", color = LightBlue)
+                    SmallCard(number = choresDue, bottomText = "Chores Due", color = CustomOrange)
                     SmallCard(number = 3, bottomText = "Meals Planned", color = LightBlue)
                 }
             }
@@ -109,9 +121,11 @@ fun Home(
             item {
                 WideCard(
                     title = "Shopping Lists",
-                    subtitle = "Colruyt",
+                    subtitle = if (firstShoppingListWithUnchecked != null) "${firstShoppingListWithUnchecked.title} ● ${firstShoppingListWithUnchecked.items.count { !it.isChecked }} items left"
+                    else "",
+                    progress = (mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { it.isChecked } }.toFloat() / mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count() }.toFloat()),
                     icon = Icons.Outlined.ShoppingCart,
-                    "3 active",
+                    "${mockShoppingLists.size} active",
                     color = LightBlue,
                     onClick = onShoppingListsClick
                 )
@@ -120,9 +134,11 @@ fun Home(
             item {
                 WideCard(
                     title = "Chores & Tasks",
-                    subtitle = "Feed the cat ● Clean kitchen",
+                    subtitle = if (firstTaskListWithUnchecked != null) "${firstTaskListWithUnchecked.title} ● ${firstTaskListWithUnchecked.items.count { !it.isChecked }} tasks left"
+                    else "",
+                    progress = (mockTasks.sumOf { taskList ->  taskList.items.count { it.isChecked } }.toFloat() / mockTasks.sumOf { taskList ->  taskList.items.count() }.toFloat()),
                     icon = Icons.Outlined.CheckCircle,
-                    "3 active",
+                    "${mockTasks.size} active",
                     color = CustomOrange,
                     onClick = onTasksListsClick
                 )
@@ -132,6 +148,7 @@ fun Home(
                 WideCard(
                     title = "Meal Planning",
                     subtitle = "Tonight: Mongolian Beef",
+                    progress = 0.7f,
                     icon = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24),
                     "This week",
                     color = LightBlue
@@ -197,7 +214,7 @@ fun SmallCard(number: Int, bottomText: String, color: Color) {
 }
 
 @Composable
-fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: String, color: Color, onClick: () -> Unit = {}) {
+fun WideCard(title: String, subtitle: String, progress: Float, icon: ImageVector, badgeText: String, color: Color, onClick: () -> Unit = {}) {
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -233,7 +250,7 @@ fun WideCard(title: String, subtitle: String, icon: ImageVector, badgeText: Stri
                     style = MaterialTheme.typography.bodyMedium,
                     color = MutedTextColor)
                 LinearProgressIndicator(
-                    progress = { .7f },
+                    progress = { progress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp),

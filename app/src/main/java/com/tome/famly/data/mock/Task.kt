@@ -27,7 +27,7 @@ val mockTasks = listOf(
     TaskList(
         id = 3,
         title = "Morning Routine",
-        resetInterval = ResetInterval.CUSTOM,
+        resetInterval = ResetInterval.MONTHLY,
         items = listOf(
             TaskListItem(id = 1, name = "Make bed"),
             TaskListItem(id = 2, name = "Brush teeth", isChecked = true),
