@@ -1,6 +1,7 @@
 package com.tome.famly.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -29,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tome.famly.data.mock.mockShoppingLists
+import com.tome.famly.data.model.ShoppingList
 import com.tome.famly.ui.components.TopBar
 import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.FamlyTheme
@@ -48,7 +52,7 @@ fun randomColor(): Color {
 }
 
 @Composable
-fun ShoppingListsScreen(onBackClick: (() -> Unit)?) {
+fun ShoppingListsScreen(onBackClick: (() -> Unit)?, onShoppingListClick: (Int) -> Unit) {
     Scaffold(
         topBar = {
             TopBar(
@@ -69,30 +73,27 @@ fun ShoppingListsScreen(onBackClick: (() -> Unit)?) {
             }
         }
     ) { innerPadding ->
-        ShoppingLists( modifier = Modifier.padding(innerPadding))
+        ShoppingLists( modifier = Modifier.padding(innerPadding), onShoppingListClick = onShoppingListClick)
     }
 }
 
 @Composable
-fun ShoppingLists(modifier: Modifier = Modifier) {
+fun ShoppingLists(modifier: Modifier = Modifier, onShoppingListClick: (Int) -> Unit) {
     LazyColumn(modifier = modifier.fillMaxSize().background(BackgroundColor)) {
-        items(10) {
-            ShoppingListCard("Colruyt", 6)
-        }
-        item {
-            ShoppingListCard("Aldi", 0)
-
+        items(mockShoppingLists) { list ->
+            ShoppingListCard(id = list.id, name = list.title, uncheckedItems = list.items.count { !it.isChecked }, onClick = onShoppingListClick)
         }
     }
 }
 
 
 @Composable
-fun ShoppingListCard(name: String, items: Int) {
+fun ShoppingListCard(id: Int, name: String, uncheckedItems: Int, onClick: (Int) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(),
+            .padding()
+            .clickable { onClick(id) },
         colors = CardDefaults.cardColors(
             containerColor = Color.White,
         ),
@@ -117,14 +118,14 @@ fun ShoppingListCard(name: String, items: Int) {
                 fontWeight = FontWeight.W500
             )
             Spacer(Modifier.weight(1f))
-            if (items > 0) {
+            if (uncheckedItems > 0) {
                 Box(
                     modifier = Modifier
                         .background(MutedTextColor.copy(alpha = 0.6f), shape = CircleShape)
                         .padding(vertical = 2.dp, horizontal = 10.dp),
                 ) {
                     Text(
-                        text = items.toString(),
+                        text = uncheckedItems.toString(),
                         color = Color.White,
                         fontWeight = FontWeight.Medium,
                         fontSize = 14.sp
@@ -153,6 +154,6 @@ fun ShoppingListCard(name: String, items: Int) {
 @Composable
 fun ShoppingListsScreenPreview() {
     FamlyTheme {
-        ShoppingListsScreen(onBackClick = {})
+        ShoppingListsScreen(onShoppingListClick = {}, onBackClick = {})
     }
 }

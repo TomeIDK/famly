@@ -1,6 +1,7 @@
 package com.tome.famly.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -32,22 +34,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tome.famly.data.mock.mockTasks
 import com.tome.famly.ui.components.TopBar
 import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.CustomOrange
 import com.tome.famly.ui.theme.FamlyTheme
+import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
 import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.plus
+import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Duration.Companion.hours
 
 @Composable
-fun TasksListsScreen(onBackClick: (() -> Unit)?) {
+fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit) {
     Scaffold(
         topBar = {
             TopBar(
@@ -60,7 +61,7 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?) {
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { },
-                containerColor = CustomOrange,
+                containerColor = LightBlue,
                 contentColor = Color.White,
                 shape = CircleShape
             ) {
@@ -68,33 +69,34 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?) {
             }
         }
     ) { innerPadding ->
-        TaskLists( modifier = Modifier.padding(innerPadding))
+        TaskLists( modifier = Modifier.padding(innerPadding), onTaskListClick = onTaskListClick)
     }
 }
 
 @Composable
-fun TaskLists(modifier: Modifier = Modifier){
+fun TaskLists(modifier: Modifier = Modifier, onTaskListClick: (Int) -> Unit){
     LazyColumn(modifier = modifier.fillMaxSize().background(BackgroundColor)) {
-        items(10) {
-            TaskCard("Feed the cats", 2, Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.plus(1,
-                DateTimeUnit.DAY).atStartOfDayIn(TimeZone.currentSystemDefault()))
-        }
-        item {
-            TaskCard("Weekly House Chores", 0, Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.plus(1,
-                DateTimeUnit.DAY).atStartOfDayIn(TimeZone.currentSystemDefault()))
-
+        items(mockTasks) { task ->
+            TaskCard(
+                id = task.id,
+                name = task.title,
+                uncheckedItems = task.items.count { !it.isChecked },
+                resetDateTime = task.nextResetDateTimeLocal(),
+                onClick = { onTaskListClick(task.id) }
+            )
         }
     }
 }
 
 @Composable
-fun TaskCard(name: String, items: Int, resetDateTime: Instant) {
-    val now = Clock.System.now()
-    val diff = resetDateTime - now
+fun TaskCard(id: Int, name: String, uncheckedItems: Int, resetDateTime: LocalDateTime, onClick: (Int) -> Unit) {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val diffHours = now.date.daysUntil(resetDateTime.date) * 24 + (resetDateTime.hour - now.hour)
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(),
+            .padding()
+            .clickable { onClick(id) },
         colors = CardDefaults.cardColors(
             containerColor = Color.White,
         ),
@@ -128,17 +130,8 @@ fun TaskCard(name: String, items: Int, resetDateTime: Instant) {
                         modifier = Modifier.size(16.dp)
                         )
                     Text(
-                        text = if (diff < 24.hours) {
-                            val hours = diff.inWholeHours
-                            "Resets in $hours hours"
-                        } else {
-                            val day = resetDateTime
-                                .toLocalDateTime(TimeZone.currentSystemDefault())
-                                .date
-                                .dayOfWeek
-                                .name
-                            "Resets on $day"
-                        },
+                        text = if (diffHours < 24) "Resets in $diffHours hours"
+                         else "Resets on ${resetDateTime.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MutedTextColor,
                         modifier = Modifier.padding(start = 2.dp)
@@ -148,14 +141,14 @@ fun TaskCard(name: String, items: Int, resetDateTime: Instant) {
             }
 
             Spacer(Modifier.weight(1f))
-            if (items > 0) {
+            if (uncheckedItems > 0) {
                 Box(
                     modifier = Modifier
                         .background(MutedTextColor.copy(alpha = 0.6f), shape = CircleShape)
                         .padding(vertical = 2.dp, horizontal = 10.dp),
                 ) {
                     Text(
-                        text = items.toString(),
+                        text = uncheckedItems.toString(),
                         color = Color.White,
                         fontWeight = FontWeight.Medium,
                         fontSize = 14.sp
@@ -164,7 +157,7 @@ fun TaskCard(name: String, items: Int, resetDateTime: Instant) {
             } else {
                 Box(
                     modifier = Modifier
-                        .background(CustomOrange, shape = CircleShape)
+                        .background(LightBlue, shape = CircleShape)
                         .padding(vertical = 2.dp, horizontal = 2.dp),
                 ) {
                     Icon(
@@ -181,8 +174,8 @@ fun TaskCard(name: String, items: Int, resetDateTime: Instant) {
 
 @Preview(showBackground = true)
 @Composable
-fun TasksListsScreen() {
+fun TasksListsScreenPreview() {
     FamlyTheme {
-        TasksListsScreen(onBackClick = {})
+        TasksListsScreen(onBackClick = {}, onTaskListClick = {})
     }
 }

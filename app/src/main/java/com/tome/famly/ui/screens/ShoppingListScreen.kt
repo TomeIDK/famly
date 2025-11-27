@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -37,30 +38,32 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.tome.famly.data.model.ShoppingList
 import com.tome.famly.ui.components.TopBar
 import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.FamlyTheme
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
+import com.tome.famly.data.mock.mockShoppingLists
 
 @Composable
-fun ShoppingListScreen(onBackClick: (() -> Unit)?) {
+fun ShoppingListScreen(shoppingList: ShoppingList, onBackClick: (() -> Unit)?) {
     Scaffold(
         topBar = {
             TopBar(
-                title = "Colruyt",
+                title = shoppingList.title,
                 titleIcon = Icons.Outlined.ShoppingCart,
                 titleIconColor = LightBlue,
                 onBackClick = onBackClick
             )
         }
     ) { innerPadding ->
-        ShoppingList( modifier = Modifier.padding(innerPadding))
+        ShoppingList( modifier = Modifier.padding(innerPadding), shoppingList = shoppingList)
     }
 }
 
 @Composable
-fun ShoppingList(modifier: Modifier = Modifier) {
+fun ShoppingList(modifier: Modifier = Modifier, shoppingList: ShoppingList) {
     Column(
         modifier = modifier.fillMaxSize().background(BackgroundColor)
     ) {
@@ -80,13 +83,10 @@ fun ShoppingList(modifier: Modifier = Modifier) {
                     .padding(top = 8.dp)
             ) {
                 item {
-                    ItemsChecked(3, 9)
+                    ItemsChecked(shoppingList.items.count { it.isChecked }, shoppingList.items.count())
                 }
-                items(5) {
-                    ListItem("Milk", checked = false, onCheckedChange = {})
-                }
-                items(3) {
-                    ListItem("Cereal", checked = true, onCheckedChange = {})
+                items(shoppingList.items) { item ->
+                    ListItem(name = item.name, checked = item.isChecked, onCheckedChange = {})
                 }
             }
         }
@@ -161,6 +161,6 @@ fun ListItem(name: String, checked: Boolean = false, onCheckedChange: (Boolean) 
 @Composable
 fun ShoppingListScreenPreview() {
     FamlyTheme {
-        ShoppingListScreen(onBackClick = {})
+        ShoppingListScreen(shoppingList = mockShoppingLists[0], onBackClick = {})
     }
 }

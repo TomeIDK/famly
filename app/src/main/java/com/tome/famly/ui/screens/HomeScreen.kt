@@ -73,7 +73,8 @@ class HomeScreen : ComponentActivity() {
 @Composable
 fun Home(
     modifier: Modifier = Modifier,
-    onShoppingListsClick: () -> Unit
+    onShoppingListsClick: () -> Unit,
+    onTasksListsClick: () -> Unit
     ) {
     Scaffold(
         topBar = {
@@ -122,7 +123,8 @@ fun Home(
                     subtitle = "Feed the cat ● Clean kitchen",
                     icon = Icons.Outlined.CheckCircle,
                     "3 active",
-                    color = CustomOrange
+                    color = CustomOrange,
+                    onClick = onTasksListsClick
                 )
             }
             // Meal Planning
@@ -323,7 +325,7 @@ fun HomeTopBar(currentFamily: String = "Pas Famly") {
 fun HomeScreenPreview() {
     FamlyTheme {
         Scaffold(topBar = { HomeTopBar() }) {
-            Home(Modifier.padding(it), onShoppingListsClick = {})
+            Home(Modifier.padding(it), onShoppingListsClick = {}, onTasksListsClick = {})
         }
     }
 }
