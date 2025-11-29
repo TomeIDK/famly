@@ -6,5 +6,6 @@ enum class Routes {
     ShoppingListDetail,
     TasksLists,
     TaskListDetail,
+    MealPlanner
 
 }

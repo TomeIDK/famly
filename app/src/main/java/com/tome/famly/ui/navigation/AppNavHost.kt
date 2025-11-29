@@ -13,6 +13,7 @@ import com.tome.famly.data.mock.mockTasks
 import com.tome.famly.data.model.ShoppingList
 import com.tome.famly.data.model.TaskList
 import com.tome.famly.ui.screens.Home
+import com.tome.famly.ui.screens.MealPlannerScreen
 import com.tome.famly.ui.screens.ShoppingListScreen
 import com.tome.famly.ui.screens.ShoppingListsScreen
 import com.tome.famly.ui.screens.TaskListScreen
@@ -27,7 +28,8 @@ fun AppNavHost(navController: NavHostController) {
     ){
         composable(route = Routes.Home.name) {
             Home(onShoppingListsClick = { navController.navigate(Routes.ShoppingLists.name) },
-                onTasksListsClick = { navController.navigate(Routes.TasksLists.name)})
+                onTasksListsClick = { navController.navigate(Routes.TasksLists.name) },
+                onMealPlannerClick = { navController.navigate(Routes.MealPlanner.name) })
         }
         composable(route = Routes.ShoppingLists.name) {
             ShoppingListsScreen(
@@ -53,7 +55,7 @@ fun AppNavHost(navController: NavHostController) {
                 onTaskListClick = { taskId -> navController.navigate("${Routes.TaskListDetail.name}/$taskId")}
             )
         }
-        composable("${Routes.TaskListDetail.name}/{taskId}",
+        composable(route = "${Routes.TaskListDetail.name}/{taskId}",
             arguments = listOf(navArgument("taskId") { type = NavType.IntType })
         ) { backStackEntry ->
             val taskId = backStackEntry.arguments?.getInt("taskId") ?: 0
@@ -64,6 +66,11 @@ fun AppNavHost(navController: NavHostController) {
                     navController.popBackStack()
                 })
             }
+        }
+        composable(route = Routes.MealPlanner.name) {
+            MealPlannerScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
     }
 }

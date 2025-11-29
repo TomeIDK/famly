@@ -56,6 +56,9 @@ import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.CustomOrange
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 
 class HomeScreen : ComponentActivity() {
@@ -76,7 +79,8 @@ class HomeScreen : ComponentActivity() {
 fun Home(
     modifier: Modifier = Modifier,
     onShoppingListsClick: () -> Unit,
-    onTasksListsClick: () -> Unit
+    onTasksListsClick: () -> Unit,
+    onMealPlannerClick: () -> Unit,
     ) {
 
     val toBuy: Int = mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { !it.isChecked } }
@@ -145,13 +149,9 @@ fun Home(
             }
             // Meal Planning
             item {
-                WideCard(
-                    title = "Meal Planning",
+                MealPlanningCard(
                     subtitle = "Tonight: Mongolian Beef",
-                    progress = 0.7f,
-                    icon = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24),
-                    "This week",
-                    color = LightBlue
+                    onClick = onMealPlannerClick
                 )
             }
 
@@ -274,6 +274,108 @@ fun WideCard(title: String, subtitle: String, progress: Float, icon: ImageVector
 }
 
 @Composable
+fun MealPlanningCard(subtitle: String, onClick: () -> Unit = {}) {
+    OutlinedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        elevation = CardDefaults.outlinedCardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(LightBlue.copy(alpha = 0.2f), shape = RectangleShape)
+                        .padding(8.dp),
+                    tint = LightBlue,
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = "Meal Planning",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = subtitle,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MutedTextColor
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .background(BackgroundColor, shape = RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "This week",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+            WeekdayRow()
+        }
+
+    }
+}
+
+@Composable
+fun WeekdayRow(
+    modifier: Modifier = Modifier
+) {
+    val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+    val today = Clock.System.now()
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+        .date
+        .dayOfWeek
+        .ordinal
+
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        days.forEachIndexed { index, day ->
+            val isToday = index == today
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 12.dp)
+                    .background(
+                        color = if (isToday) LightBlue else MutedTextColor.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                    .padding(vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = day,
+                    color = if (isToday) Color.White else Color.Black,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun FamilyMemberCard(name: String, email: String, role: String) {
     val badgeColor = if (role == "Admin") LightBlue else BackgroundColor
     val badgeTextColor = if (role == "Admin") Color.White else Color.Black
@@ -342,7 +444,7 @@ fun HomeTopBar(currentFamily: String = "Pas Famly") {
 fun HomeScreenPreview() {
     FamlyTheme {
         Scaffold(topBar = { HomeTopBar() }) {
-            Home(Modifier.padding(it), onShoppingListsClick = {}, onTasksListsClick = {})
+            Home(Modifier.padding(it), onShoppingListsClick = {}, onTasksListsClick = {}, onMealPlannerClick = {})
         }
     }
 }

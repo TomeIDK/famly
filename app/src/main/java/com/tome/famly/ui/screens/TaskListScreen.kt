@@ -37,7 +37,7 @@ fun TaskListScreen(taskList: TaskList, onBackClick: (() -> Unit)?) {
             )
         }
     ) { innerPadding ->
-        TaskList( modifier = Modifier.padding(innerPadding), taskList = taskList)
+        TaskList(modifier = Modifier.padding(innerPadding), taskList = taskList)
     }
 }
 

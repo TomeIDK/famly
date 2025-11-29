@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.tome.famly.data.model.ShoppingList
@@ -151,7 +152,7 @@ fun ListItem(name: String, checked: Boolean = false, onCheckedChange: (Boolean) 
                 )
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = name, style = MaterialTheme.typography.bodyLarge)
+            Text(text = name, style = MaterialTheme.typography.bodyLarge, textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None)
         }
     }
 
