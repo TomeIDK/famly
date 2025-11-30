@@ -83,13 +83,13 @@ fun Home(
     onMealPlannerClick: () -> Unit,
     ) {
 
-    val toBuy: Int = mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { !it.isChecked } }
-    val choresDue: Int = mockTasks.sumOf { taskList ->  taskList.items.count { !it.isChecked } }
+    val toBuy: Int = mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { !it.isChecked.value } }
+    val choresDue: Int = mockTasks.sumOf { taskList ->  taskList.items.count { !it.isChecked.value } }
     val firstShoppingListWithUnchecked = mockShoppingLists.firstOrNull { list ->
-        list.items.any { !it.isChecked }
+        list.items.any { !it.isChecked.value }
     }
     val firstTaskListWithUnchecked = mockTasks.firstOrNull { list ->
-        list.items.any { !it.isChecked }
+        list.items.any { !it.isChecked.value }
     }
 
     Scaffold(
@@ -125,9 +125,9 @@ fun Home(
             item {
                 WideCard(
                     title = "Shopping Lists",
-                    subtitle = if (firstShoppingListWithUnchecked != null) "${firstShoppingListWithUnchecked.title} ● ${firstShoppingListWithUnchecked.items.count { !it.isChecked }} items left"
-                    else "",
-                    progress = (mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { it.isChecked } }.toFloat() / mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count() }.toFloat()),
+                    subtitle = if (firstShoppingListWithUnchecked != null) "${firstShoppingListWithUnchecked.title} ● ${firstShoppingListWithUnchecked.items.count { !it.isChecked.value }} items left"
+                    else "All shopping lists completed!",
+                    progress = (mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { it.isChecked.value } }.toFloat() / mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count() }.toFloat()),
                     icon = Icons.Outlined.ShoppingCart,
                     "${mockShoppingLists.size} active",
                     color = LightBlue,
@@ -138,9 +138,9 @@ fun Home(
             item {
                 WideCard(
                     title = "Chores & Tasks",
-                    subtitle = if (firstTaskListWithUnchecked != null) "${firstTaskListWithUnchecked.title} ● ${firstTaskListWithUnchecked.items.count { !it.isChecked }} tasks left"
-                    else "",
-                    progress = (mockTasks.sumOf { taskList ->  taskList.items.count { it.isChecked } }.toFloat() / mockTasks.sumOf { taskList ->  taskList.items.count() }.toFloat()),
+                    subtitle = if (firstTaskListWithUnchecked != null) "${firstTaskListWithUnchecked.title} ● ${firstTaskListWithUnchecked.items.count { !it.isChecked.value }} tasks left"
+                    else "All tasks completed!",
+                    progress = (mockTasks.sumOf { taskList ->  taskList.items.count { it.isChecked.value } }.toFloat() / mockTasks.sumOf { taskList ->  taskList.items.count() }.toFloat()),
                     icon = Icons.Outlined.CheckCircle,
                     "${mockTasks.size} active",
                     color = CustomOrange,

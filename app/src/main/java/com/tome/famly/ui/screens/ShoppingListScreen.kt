@@ -27,7 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +48,7 @@ import com.tome.famly.ui.theme.FamlyTheme
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
 import com.tome.famly.data.mock.mockShoppingLists
+import com.tome.famly.data.model.ShoppingListItem
 
 @Composable
 fun ShoppingListScreen(shoppingList: ShoppingList, onBackClick: (() -> Unit)?) {
@@ -65,10 +68,13 @@ fun ShoppingListScreen(shoppingList: ShoppingList, onBackClick: (() -> Unit)?) {
 
 @Composable
 fun ShoppingList(modifier: Modifier = Modifier, shoppingList: ShoppingList) {
+    val items = remember { mutableStateListOf(*shoppingList.items.toTypedArray()) }
     Column(
-        modifier = modifier.fillMaxSize().background(BackgroundColor)
+        modifier = modifier
+            .fillMaxSize()
+            .background(BackgroundColor)
     ) {
-        AddItemField()
+        AddItemField(items)
         OutlinedCard(
             modifier = Modifier
                 .fillMaxWidth()
@@ -84,10 +90,10 @@ fun ShoppingList(modifier: Modifier = Modifier, shoppingList: ShoppingList) {
                     .padding(top = 8.dp)
             ) {
                 item {
-                    ItemsChecked(shoppingList.items.count { it.isChecked }, shoppingList.items.count())
+                    ItemsChecked(items.count { it.isChecked.value }, items.count())
                 }
-                items(shoppingList.items) { item ->
-                    ListItem(name = item.name, checked = item.isChecked, onCheckedChange = {})
+                items(items) { item ->
+                    ListItem(name = item.name, checked = item.isChecked.value, onCheckedChange = { item.isChecked.value = it })
                 }
             }
         }
@@ -95,20 +101,25 @@ fun ShoppingList(modifier: Modifier = Modifier, shoppingList: ShoppingList) {
 }
 
 @Composable
-fun AddItemField() {
+fun AddItemField(list: MutableList<ShoppingListItem>) {
     var text by remember { mutableStateOf("") }
 
     TextField(
         value = text,
         onValueChange = { text = it },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 12.dp),
         colors = TextFieldDefaults.colors(
             unfocusedContainerColor = Color.White,
             focusedContainerColor = Color(0xFFF2F2F2),
         ),
         placeholder = { Text("Add an item...") },
         trailingIcon = {
-            IconButton(onClick = { }) {
+            IconButton(onClick = {
+                list.add(ShoppingListItem(id = list.size + 1, name = text))
+                text = ""
+            }) {
                 Icon(Icons.Default.Add, contentDescription = null, tint = LightBlue)
             }
         },

@@ -1,5 +1,7 @@
 package com.tome.famly.data.model
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
@@ -12,7 +14,7 @@ data class TaskList(
     val id: Int,
     val title: String,
     val resetInterval: ResetInterval,
-    val items: List<TaskListItem>
+    val items: MutableList<TaskListItem>
 ) {
     fun nextResetDateTimeLocal(): LocalDateTime {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -30,7 +32,7 @@ data class TaskList(
 data class TaskListItem(
     val id: Int,
     val name: String,
-    var isChecked: Boolean = false
+    var isChecked: MutableState<Boolean> = mutableStateOf(false)
 )
 
 enum class ResetInterval{

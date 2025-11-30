@@ -2,6 +2,7 @@ package com.tome.famly.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,21 +14,36 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
@@ -47,8 +63,11 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit) {
+    var showBottomSheet by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopBar(
@@ -60,7 +79,7 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit)
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { },
+                onClick = { showBottomSheet = true },
                 containerColor = LightBlue,
                 contentColor = Color.White,
                 shape = CircleShape
@@ -69,7 +88,72 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit)
             }
         }
     ) { innerPadding ->
+        var newListName by remember { mutableStateOf("") }
         TaskLists( modifier = Modifier.padding(innerPadding), onTaskListClick = onTaskListClick)
+
+        if (showBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showBottomSheet = false
+                },
+                sheetState = rememberModalBottomSheetState()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().drawBehind {
+                            val strokeWidth = 1.dp.toPx()
+                            val y = size.height - strokeWidth / 2
+                            drawLine(
+                                color = Color.Gray,
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = strokeWidth
+                            )
+                        }.padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+
+                        ) {
+                        Text(text = "New Task List", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Icon(Icons.Outlined.Close, contentDescription = "Close", modifier = Modifier.clickable { showBottomSheet = false })
+                    }
+
+                    Column {
+                        Text("List Name", style = MaterialTheme.typography.labelLarge)
+                        OutlinedTextField(
+                            value = newListName,
+                            onValueChange = { newListName = it },
+                            label = { Text("e.g., Weekly cleaning") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = TextFieldDefaults.colors(
+                                unfocusedContainerColor = Color.White,
+                                focusedContainerColor = Color.White,
+                                unfocusedTextColor = MutedTextColor,
+                                focusedLabelColor = LightBlue,
+                                focusedIndicatorColor = LightBlue,
+                            )
+                        )
+                        Text("Give your task list a memorable name", style = MaterialTheme.typography.labelMedium, color = MutedTextColor, modifier = Modifier.padding(top = 6.dp))
+                    }
+                    Button(onClick = { showBottomSheet = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = LightBlue
+                        )
+                    ) {
+                        Text("Create List", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -80,7 +164,7 @@ fun TaskLists(modifier: Modifier = Modifier, onTaskListClick: (Int) -> Unit){
             TaskCard(
                 id = task.id,
                 name = task.title,
-                uncheckedItems = task.items.count { !it.isChecked },
+                uncheckedItems = task.items.count { !it.isChecked.value },
                 resetDateTime = task.nextResetDateTimeLocal(),
                 onClick = { onTaskListClick(task.id) }
             )
