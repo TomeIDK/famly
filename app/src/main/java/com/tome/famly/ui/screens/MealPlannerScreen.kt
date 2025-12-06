@@ -11,19 +11,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +38,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,6 +50,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tome.famly.R
+import com.tome.famly.data.mock.mockMealPlans
+import com.tome.famly.data.model.MealPlan
 import com.tome.famly.data.model.MealPlannerTab
 import com.tome.famly.ui.components.TopBar
 import com.tome.famly.ui.theme.BackgroundColor
@@ -50,12 +60,13 @@ import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.plus
 
-fun getCurrentWeekDates(): List<String> {
+fun getCurrentWeekDates(): List<LocalDate> {
     val today = Clock.System.now()
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
@@ -63,23 +74,34 @@ fun getCurrentWeekDates(): List<String> {
     val dayIndex = today.dayOfWeek.ordinal
     val monday = today.minus(DatePeriod(days = dayIndex))
 
+    return (0..6).map { i ->
+        monday.plus(DatePeriod(days = i))
+    }
+}
+
+fun LocalDate.toDisplayString(): String {
     val monthNames = listOf(
         "Jan","Feb","Mar","Apr","May","Jun",
         "Jul","Aug","Sep","Oct","Nov","Dec"
     )
-    val dayNames = listOf("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday")
+    val dayNames = listOf(
+        "Monday","Tuesday","Wednesday","Thursday",
+        "Friday","Saturday","Sunday"
+    )
 
-    return (0..6).map { i ->
-        val date = monday.plus(DatePeriod(days = i))
-        val dayName = dayNames[date.dayOfWeek.ordinal]
-        val monthName = monthNames[date.monthNumber - 1]
-        "$dayName, $monthName ${date.dayOfMonth}"
-    }
+    val dayName = dayNames[this.dayOfWeek.ordinal]
+    val monthName = monthNames[this.monthNumber - 1]
+
+    return "$dayName, $monthName ${this.dayOfMonth}"
 }
 
+
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MealPlannerScreen(onBackClick: () -> Unit) {
     var selectedTab by remember { mutableStateOf(MealPlannerTab.WEEKPLAN) }
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -92,7 +114,7 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { },
+                onClick = { showBottomSheet = true },
                 containerColor = LightBlue,
                 contentColor = Color.White,
                 shape = CircleShape
@@ -101,6 +123,8 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
             }
         }
     ) { innerPadding ->
+        var newListName by remember { mutableStateOf("") }
+
         Column(
             modifier = Modifier
                 .padding(innerPadding)
@@ -115,25 +139,139 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
             }
         }
 
-    }
-}
+        if (showBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showBottomSheet = false
+                },
+                sheetState = rememberModalBottomSheetState()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().drawBehind {
+                            val strokeWidth = 1.dp.toPx()
+                            val y = size.height - strokeWidth / 2
+                            drawLine(
+                                color = Color.Gray,
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = strokeWidth
+                            )
+                        }.padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
 
-@Composable
-fun MealPlanner(modifier: Modifier = Modifier) {
-    val weekDays = getCurrentWeekDates()
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        items(weekDays.size) { index ->
-            val date = weekDays[index]
-            MealPlanCard("Mongolian Beef", date)
+                        ) {
+                        Text(text = "New Recipe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Icon(Icons.Outlined.Close, contentDescription = "Close", modifier = Modifier.clickable { showBottomSheet = false })
+                    }
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        Column {
+                            Text("Recipe Title", style = MaterialTheme.typography.labelLarge)
+                            OutlinedTextField(
+                                value = newListName,
+                                onValueChange = { newListName = it },
+                                label = { Text("Chicken Katsu Curry") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = TextFieldDefaults.colors(
+                                    unfocusedContainerColor = Color.White,
+                                    focusedContainerColor = Color.White,
+                                    unfocusedTextColor = MutedTextColor,
+                                    focusedLabelColor = LightBlue,
+                                    focusedIndicatorColor = LightBlue,
+                                )
+                            )
+                        }
+
+                        Column {
+                            Text("Recipe Description", style = MaterialTheme.typography.labelLarge)
+                            OutlinedTextField(
+                                value = newListName,
+                                onValueChange = { newListName = it },
+                                label = { Text("Ingredients, instructions,...") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = TextFieldDefaults.colors(
+                                    unfocusedContainerColor = Color.White,
+                                    focusedContainerColor = Color.White,
+                                    unfocusedTextColor = MutedTextColor,
+                                    focusedLabelColor = LightBlue,
+                                    focusedIndicatorColor = LightBlue,
+                                )
+                            )
+                        }
+
+                        Column {
+                            Text("Recipe Link", style = MaterialTheme.typography.labelLarge)
+                            OutlinedTextField(
+                                value = newListName,
+                                onValueChange = { newListName = it },
+                                label = { Text("Paste a link to your recipe here...") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = TextFieldDefaults.colors(
+                                    unfocusedContainerColor = Color.White,
+                                    focusedContainerColor = Color.White,
+                                    unfocusedTextColor = MutedTextColor,
+                                    focusedLabelColor = LightBlue,
+                                    focusedIndicatorColor = LightBlue,
+                                )
+                            )
+                        }
+
+                        Button(onClick = { showBottomSheet = false },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = LightBlue
+                            )
+                        ) {
+                            Text("Create Recipe", style = MaterialTheme.typography.titleMedium)
+                        }
+
+                    }
+
+
+                }
+            }
         }
 
     }
 }
 
 @Composable
-fun MealPlanCard(mealTitle: String, date: String) {
+fun MealPlanner(modifier: Modifier = Modifier) {
+    val weekDates = getCurrentWeekDates()
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        items(weekDates.size) { index ->
+            val date = weekDates[index]
+
+            val planForDay = mockMealPlans.find { it.date == date }
+                ?: MealPlan(date, null)
+
+            MealPlanCard(mealPlan = planForDay)
+        }
+
+    }
+}
+
+@Composable
+fun MealPlanCard(mealPlan: MealPlan) {
     OutlinedCard(
         modifier = Modifier.fillMaxWidth()
             .padding(8.dp)
@@ -146,7 +284,7 @@ fun MealPlanCard(mealTitle: String, date: String) {
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp, start = 16.dp, end = 16.dp)
         ) {
             Text(
-                text = date,
+                text = mealPlan.date.toDisplayString(),
                 color = MutedTextColor,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -164,30 +302,12 @@ fun MealPlanCard(mealTitle: String, date: String) {
                         .padding(8.dp),
                     tint = LightBlue,
                 )
-                Column {
-                    Text(
-                        text = mealTitle,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 20.sp
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = null,
-                            Modifier.size(18.dp),
-                            tint = MutedTextColor
-                        )
-                        Text(
-                            text = "Everyone attending",
-                            color = MutedTextColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
+                Text(
+                    text = mealPlan.recipe ?: "No meal planned",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 20.sp
+                )
             }
             Box(
                 modifier = Modifier

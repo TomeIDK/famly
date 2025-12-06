@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.rememberNavController
 import com.tome.famly.R
+import com.tome.famly.data.mock.mockMealPlans
 import com.tome.famly.data.mock.mockShoppingLists
 import com.tome.famly.data.mock.mockTasks
 import com.tome.famly.ui.navigation.AppNavHost
@@ -150,7 +151,10 @@ fun Home(
             // Meal Planning
             item {
                 MealPlanningCard(
-                    subtitle = "Tonight: Mongolian Beef",
+                    subtitle = mockMealPlans.find {
+                        it.date == Clock.System.now()
+                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    }?.recipe ?: "No meal planned",
                     onClick = onMealPlannerClick
                 )
             }
@@ -311,7 +315,7 @@ fun MealPlanningCard(subtitle: String, onClick: () -> Unit = {}) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = subtitle,
+                        text = "Tonight: $subtitle",
                         modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MutedTextColor
