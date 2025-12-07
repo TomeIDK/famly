@@ -154,7 +154,7 @@ fun Home(
                     subtitle = mockMealPlans.find {
                         it.date == Clock.System.now()
                             .toLocalDateTime(TimeZone.currentSystemDefault()).date
-                    }?.recipe ?: "No meal planned",
+                    }?.recipe?.value ?: "No meal planned",
                     onClick = onMealPlannerClick
                 )
             }

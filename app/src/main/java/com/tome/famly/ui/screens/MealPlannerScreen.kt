@@ -6,7 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,13 +48,16 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tome.famly.R
 import com.tome.famly.data.mock.mockMealPlans
+import com.tome.famly.data.mock.mockRecipes
 import com.tome.famly.data.model.MealPlan
 import com.tome.famly.data.model.MealPlannerTab
+import com.tome.famly.data.model.Recipe
 import com.tome.famly.ui.components.TopBar
 import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.FamlyTheme
@@ -101,7 +106,9 @@ fun LocalDate.toDisplayString(): String {
 @Composable
 fun MealPlannerScreen(onBackClick: () -> Unit) {
     var selectedTab by remember { mutableStateOf(MealPlannerTab.WEEKPLAN) }
-    var showBottomSheet by remember { mutableStateOf(false) }
+    var showAddRecipeBottomSheet by remember { mutableStateOf(false) }
+    var showChangeMealPlanBottomSheet by remember { mutableStateOf(false) }
+    var selectedDateForChange by remember { mutableStateOf<LocalDate?>(null) }
 
     Scaffold(
         topBar = {
@@ -114,7 +121,7 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showBottomSheet = true },
+                onClick = { showAddRecipeBottomSheet = true },
                 containerColor = LightBlue,
                 contentColor = Color.White,
                 shape = CircleShape
@@ -123,7 +130,6 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
             }
         }
     ) { innerPadding ->
-        var newListName by remember { mutableStateOf("") }
 
         Column(
             modifier = Modifier
@@ -134,144 +140,67 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
         ) {
             MealPlannerTabSelector(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
             when (selectedTab) {
-                MealPlannerTab.WEEKPLAN -> MealPlanner(modifier = Modifier.padding(innerPadding))
+                MealPlannerTab.WEEKPLAN -> MealPlanner(
+                    modifier = Modifier.padding(innerPadding),
+                    onChangeClick = { date ->
+                    selectedDateForChange = date
+                    showChangeMealPlanBottomSheet = true
+                })
                 MealPlannerTab.RECIPES -> RecipeBook(modifier = Modifier.padding(innerPadding))
             }
         }
 
-        if (showBottomSheet) {
-            ModalBottomSheet(
-                onDismissRequest = {
-                    showBottomSheet = false
-                },
-                sheetState = rememberModalBottomSheetState()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().drawBehind {
-                            val strokeWidth = 1.dp.toPx()
-                            val y = size.height - strokeWidth / 2
-                            drawLine(
-                                color = Color.Gray,
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y),
-                                strokeWidth = strokeWidth
-                            )
-                        }.padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-
-                        ) {
-                        Text(text = "New Recipe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                        Icon(Icons.Outlined.Close, contentDescription = "Close", modifier = Modifier.clickable { showBottomSheet = false })
-                    }
-
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-
-                        Column {
-                            Text("Recipe Title", style = MaterialTheme.typography.labelLarge)
-                            OutlinedTextField(
-                                value = newListName,
-                                onValueChange = { newListName = it },
-                                label = { Text("Chicken Katsu Curry") },
-                                singleLine = true,
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = TextFieldDefaults.colors(
-                                    unfocusedContainerColor = Color.White,
-                                    focusedContainerColor = Color.White,
-                                    unfocusedTextColor = MutedTextColor,
-                                    focusedLabelColor = LightBlue,
-                                    focusedIndicatorColor = LightBlue,
-                                )
-                            )
-                        }
-
-                        Column {
-                            Text("Recipe Description", style = MaterialTheme.typography.labelLarge)
-                            OutlinedTextField(
-                                value = newListName,
-                                onValueChange = { newListName = it },
-                                label = { Text("Ingredients, instructions,...") },
-                                singleLine = true,
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = TextFieldDefaults.colors(
-                                    unfocusedContainerColor = Color.White,
-                                    focusedContainerColor = Color.White,
-                                    unfocusedTextColor = MutedTextColor,
-                                    focusedLabelColor = LightBlue,
-                                    focusedIndicatorColor = LightBlue,
-                                )
-                            )
-                        }
-
-                        Column {
-                            Text("Recipe Link", style = MaterialTheme.typography.labelLarge)
-                            OutlinedTextField(
-                                value = newListName,
-                                onValueChange = { newListName = it },
-                                label = { Text("Paste a link to your recipe here...") },
-                                singleLine = true,
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = TextFieldDefaults.colors(
-                                    unfocusedContainerColor = Color.White,
-                                    focusedContainerColor = Color.White,
-                                    unfocusedTextColor = MutedTextColor,
-                                    focusedLabelColor = LightBlue,
-                                    focusedIndicatorColor = LightBlue,
-                                )
-                            )
-                        }
-
-                        Button(onClick = { showBottomSheet = false },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = LightBlue
-                            )
-                        ) {
-                            Text("Create Recipe", style = MaterialTheme.typography.titleMedium)
-                        }
-
-                    }
-
-
+        if (showAddRecipeBottomSheet) {
+            AddRecipeBottomSheet(
+                onDismiss = { showAddRecipeBottomSheet = false },
+                onSave = { newRecipe ->
+                    mockRecipes.add(newRecipe)
                 }
-            }
+            )
+        }
+        
+        if (showChangeMealPlanBottomSheet) {
+            ChangeMealPlanBottomSheet(
+                onDismiss = { showChangeMealPlanBottomSheet = false },
+                onSave = { selectedRecipe ->
+                    selectedDateForChange?.let { date ->
+                        val plan = mockMealPlans.find { it.date == selectedDateForChange }
+                        if (plan != null) {
+                            plan.recipe.value = selectedRecipe?.title
+                        } else {
+                            mockMealPlans.add(MealPlan(selectedDateForChange!!, mutableStateOf(selectedRecipe?.title)))
+                        }
+
+                        selectedDateForChange = null
+                    }
+                    showChangeMealPlanBottomSheet = false
+                }
+            )
         }
 
     }
 }
 
 @Composable
-fun MealPlanner(modifier: Modifier = Modifier) {
+fun MealPlanner(modifier: Modifier = Modifier, onChangeClick: (LocalDate) -> Unit) {
     val weekDates = getCurrentWeekDates()
+
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         items(weekDates.size) { index ->
             val date = weekDates[index]
-
             val planForDay = mockMealPlans.find { it.date == date }
-                ?: MealPlan(date, null)
+                ?: MealPlan(date, mutableStateOf((null)))
 
-            MealPlanCard(mealPlan = planForDay)
+            MealPlanCard(mealPlan = planForDay, onChangeClick = { onChangeClick(date) })
         }
 
     }
 }
 
 @Composable
-fun MealPlanCard(mealPlan: MealPlan) {
+fun MealPlanCard(mealPlan: MealPlan, onChangeClick: () -> Unit) {
     OutlinedCard(
         modifier = Modifier.fillMaxWidth()
             .padding(8.dp)
@@ -303,7 +232,7 @@ fun MealPlanCard(mealPlan: MealPlan) {
                     tint = LightBlue,
                 )
                 Text(
-                    text = mealPlan.recipe ?: "No meal planned",
+                    text = mealPlan.recipe.value ?: "No meal planned",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Medium,
                     fontSize = 20.sp
@@ -318,7 +247,7 @@ fun MealPlanCard(mealPlan: MealPlan) {
                         shape = RoundedCornerShape(6.dp)
                     )
                     .background(BackgroundColor)
-                    .clickable(onClick = {})
+                    .clickable(onClick = { onChangeClick() })
                     .padding(vertical = 4.dp)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
@@ -366,6 +295,220 @@ fun MealPlannerTabSelector(
                     text = label,
                     color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MutedTextColor,
                     style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddRecipeBottomSheet(
+    onDismiss: () -> Unit,
+    onSave: (Recipe) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var desc by remember { mutableStateOf("") }
+    var link by remember { mutableStateOf("") }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().drawBehind {
+                    val strokeWidth = 1.dp.toPx()
+                    val y = size.height - strokeWidth / 2
+                    drawLine(
+                        color = Color.Gray,
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = strokeWidth
+                    )
+                }.padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+
+                ) {
+                Text(text = "New Recipe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Outlined.Close, contentDescription = "Close", modifier = Modifier.clickable { onDismiss() })
+            }
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                Column {
+                    Text("Recipe Title", style = MaterialTheme.typography.labelLarge)
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Chicken Katsu Curry") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = Color.White,
+                            unfocusedTextColor = MutedTextColor,
+                            focusedLabelColor = LightBlue,
+                            focusedIndicatorColor = LightBlue,
+                        )
+                    )
+                }
+
+                Column {
+                    Text("Recipe Description", style = MaterialTheme.typography.labelLarge)
+                    OutlinedTextField(
+                        value = desc,
+                        onValueChange = { desc = it },
+                        label = { Text("Ingredients, instructions,...") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = Color.White,
+                            unfocusedTextColor = MutedTextColor,
+                            focusedLabelColor = LightBlue,
+                            focusedIndicatorColor = LightBlue,
+                        )
+                    )
+                }
+
+                Column {
+                    Text("Recipe Link", style = MaterialTheme.typography.labelLarge)
+                    OutlinedTextField(
+                        value = link,
+                        onValueChange = { link = it },
+                        label = { Text("Paste a link to your recipe here...") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = Color.White,
+                            unfocusedTextColor = MutedTextColor,
+                            focusedLabelColor = LightBlue,
+                            focusedIndicatorColor = LightBlue,
+                        )
+                    )
+                }
+
+                Button(onClick = {
+                    val recipe = Recipe(
+                        title = title,
+                        description = desc,
+                        link = link
+                    )
+                    onSave(recipe)
+                    onDismiss()
+                },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LightBlue
+                    )
+                ) {
+                    Text("Create Recipe", style = MaterialTheme.typography.titleMedium)
+                }
+
+            }
+
+
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChangeMealPlanBottomSheet(
+    onDismiss: () -> Unit,
+    onSave: (Recipe?) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().drawBehind {
+                    val strokeWidth = 1.dp.toPx()
+                    val y = size.height - strokeWidth / 2
+                    drawLine(
+                        color = Color.Gray,
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = strokeWidth
+                    )
+                }.padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+
+                ) {
+                Text(text = "Change Meal Plan", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Outlined.Close, contentDescription = "Close", modifier = Modifier.clickable { onDismiss() })
+            }
+
+            Button(
+                onClick = { onSave(null) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Clear Meal Plan")
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(mockRecipes.size) { index ->
+                    ChangeMealPlanRecipeCard(recipe = mockRecipes[index], onClick = { onSave(mockRecipes[index]) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ChangeMealPlanRecipeCard(
+    recipe: Recipe,
+    onClick: () -> Unit
+) {
+
+    OutlinedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = recipe.title,
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            recipe.description?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MutedTextColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

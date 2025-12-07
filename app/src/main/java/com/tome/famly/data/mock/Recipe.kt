@@ -2,7 +2,7 @@ package com.tome.famly.data.mock
 
 import com.tome.famly.data.model.Recipe
 
-val mockRecipes = listOf(
+val mockRecipes = mutableListOf(
     Recipe(
         title = "Spaghetti Carbonara",
         description = "Classic Italian pasta.",
