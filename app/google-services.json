@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "645101667792",
+    "project_id": "famly-beca1",
+    "storage_bucket": "famly-beca1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:645101667792:android:23ee5c138a2f49ad6f65d5",
+        "android_client_info": {
+          "package_name": "com.tome.famly"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "645101667792-2eb39quo6lcrnoqg6v7eajickh55ng9a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAa1Ze5CxdhX2uztllW8tWCHJRfGhERNOQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "645101667792-2eb39quo6lcrnoqg6v7eajickh55ng9a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

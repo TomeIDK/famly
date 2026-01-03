@@ -8,8 +8,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.google.firebase.auth.FirebaseAuth
 import com.tome.famly.data.mock.mockShoppingLists
 import com.tome.famly.data.mock.mockTasks
+import com.tome.famly.data.model.Family
 import com.tome.famly.data.model.ShoppingList
 import com.tome.famly.data.model.TaskList
 import com.tome.famly.ui.screens.Home
@@ -20,16 +22,27 @@ import com.tome.famly.ui.screens.TaskListScreen
 import com.tome.famly.ui.screens.TasksListsScreen
 
 @Composable
-fun AppNavHost(navController: NavHostController) {
+fun AppNavHost(
+    navController: NavHostController,
+    userId: String,
+    currentFamily: Family,
+    onChangeFamily: (Family) -> Unit
+) {
     NavHost(
         navController = navController,
         startDestination = Routes.Home.name,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
     ){
         composable(route = Routes.Home.name) {
-            Home(onShoppingListsClick = { navController.navigate(Routes.ShoppingLists.name) },
+            Home(
+                onShoppingListsClick = { navController.navigate(Routes.ShoppingLists.name) },
                 onTasksListsClick = { navController.navigate(Routes.TasksLists.name) },
-                onMealPlannerClick = { navController.navigate(Routes.MealPlanner.name) })
+                onMealPlannerClick = { navController.navigate(Routes.MealPlanner.name) },
+                onSignOut = { FirebaseAuth.getInstance().signOut() },
+                currentFamily = currentFamily,
+                onChangeFamily = onChangeFamily,
+                userId = userId
+            )
         }
         composable(route = Routes.ShoppingLists.name) {
             ShoppingListsScreen(
