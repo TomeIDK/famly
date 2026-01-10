@@ -2,11 +2,16 @@ package com.tome.famly.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -18,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -27,6 +33,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.tome.famly.MainActivity
+import com.tome.famly.R
 import com.tome.famly.data.CurrentUser
 import com.tome.famly.data.FirestoreDB
 import com.tome.famly.ui.navigation.Routes
@@ -63,13 +70,35 @@ fun LoginScreen(navController: NavController) {
     }
 
     if (user == null) {
-        // login button
-        Button(onClick = {
-            val intent = context.googleSignInClient.signInIntent
-            launcher.launch(intent)
-        }) {
-            Text("Sign in with Google")
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.famly_logo_img),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.size(128.dp)
+                )
+
+                Text(
+                    text = "Famly",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Button(onClick = {
+                    val intent = context.googleSignInClient.signInIntent
+                    launcher.launch(intent)
+                },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(text = "Sign in with Google")
+                }
+            }
         }
+
     } else {
         // signed in, update Firestore user
         val uid = user!!.uid
