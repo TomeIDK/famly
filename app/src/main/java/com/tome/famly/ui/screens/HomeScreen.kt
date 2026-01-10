@@ -22,8 +22,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.tome.famly.ui.theme.FamlyTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -36,6 +34,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,78 +50,38 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
 import com.tome.famly.R
-import com.tome.famly.data.mock.mockFamilies
+import com.tome.famly.data.CurrentUser
 import com.tome.famly.data.mock.mockMealPlans
 import com.tome.famly.data.mock.mockShoppingLists
 import com.tome.famly.data.mock.mockTasks
-import com.tome.famly.data.model.Family
-import com.tome.famly.ui.navigation.AppNavHost
+import com.tome.famly.ui.navigation.Routes
 import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.CustomOrange
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
+import com.tome.famly.ui.viewmodels.HomeViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 @Composable
-fun AppEntry(userId: String, onSignOut: () -> Unit) {
-    var currentFamily by remember { mutableStateOf<Family?>(null) }
-    var showFamilyEntry by remember { mutableStateOf(false) }
+fun Home(navController: NavController, viewModel: HomeViewModel = viewModel<HomeViewModel>()) {
+    val members by remember { derivedStateOf { viewModel.members } }
+    var toBuy by remember { mutableStateOf(0) }
+    var choresDue by remember { mutableStateOf(0) }
+    var mealsPlanned by remember { mutableStateOf(0) }
 
-    val userFamilies = mockFamilies.filter {  it.members.contains(userId) }
-
-    if (showFamilyEntry || currentFamily == null) {
-        FamilyEntryScreen(
-            userId = userId,
-            existingFamilies = userFamilies,
-            onFamilySelected = { family ->
-                currentFamily = family
-                showFamilyEntry = false
-            },
-            onFamilyCreated = { family ->
-                val newFamily =family.copy(members = listOf(userId))
-                mockFamilies.add(newFamily)
-                currentFamily = newFamily
-                showFamilyEntry = false
-            },
-            onFamilyJoined = { family ->
-                val updatedFamily = family.copy(members = family.members + userId)
-                mockFamilies.remove(family)
-                mockFamilies.add(updatedFamily)
-                currentFamily = updatedFamily
-                showFamilyEntry = false
-            }
-        )
-    } else {
-        val navController = rememberNavController()
-        AppNavHost(
-            navController = navController,
-            userId = userId,
-            currentFamily = currentFamily!!,
-            onChangeFamily = { showFamilyEntry = true }
-        )
+    LaunchedEffect(Unit) {
+        viewModel.getFamilyMembers()
+        toBuy = viewModel.getItemsToBuy()
+        choresDue = viewModel.getTasksDue()
+        mealsPlanned = viewModel.getMealsPlannedCount()
     }
 
-
-}
-
-@Composable
-fun Home(
-    modifier: Modifier = Modifier,
-    onShoppingListsClick: () -> Unit,
-    onTasksListsClick: () -> Unit,
-    onMealPlannerClick: () -> Unit,
-    onSignOut: () -> Unit,
-    currentFamily: Family,
-    onChangeFamily: (Family) -> Unit,
-    userId: String
-    ) {
-
-    val toBuy: Int = mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { !it.isChecked.value } }
-    val choresDue: Int = mockTasks.sumOf { taskList ->  taskList.items.count { !it.isChecked.value } }
     val firstShoppingListWithUnchecked = mockShoppingLists.firstOrNull { list ->
         list.items.any { !it.isChecked.value }
     }
@@ -131,12 +91,7 @@ fun Home(
 
     Scaffold(
         topBar = {
-            HomeTopBar(
-                currentFamily = currentFamily,
-                userId = userId,
-                onChangeFamily = onChangeFamily,
-                onSignOut = onSignOut
-            )
+            HomeTopBar(navController)
         }
     ) { innerPadding ->
         LazyColumn(
@@ -158,7 +113,7 @@ fun Home(
                 ) {
                     SmallCard(number = toBuy, bottomText = "To Buy", color = LightBlue)
                     SmallCard(number = choresDue, bottomText = "Chores Due", color = CustomOrange)
-                    SmallCard(number = 3, bottomText = "Meals Planned", color = LightBlue)
+                    SmallCard(number = mealsPlanned, bottomText = "Meals Planned", color = LightBlue)
                 }
             }
 
@@ -173,7 +128,7 @@ fun Home(
                     icon = Icons.Outlined.ShoppingCart,
                     "${mockShoppingLists.size} active",
                     color = LightBlue,
-                    onClick = onShoppingListsClick
+                    onClick = { navController.navigate(Routes.ShoppingLists.name) }
                 )
             }
             // Tasks
@@ -186,7 +141,7 @@ fun Home(
                     icon = Icons.Outlined.CheckCircle,
                     "${mockTasks.size} active",
                     color = CustomOrange,
-                    onClick = onTasksListsClick
+                    onClick = { navController.navigate(Routes.TasksLists.name) }
                 )
             }
             // Meal Planning
@@ -196,7 +151,7 @@ fun Home(
                         it.date == Clock.System.now()
                             .toLocalDateTime(TimeZone.currentSystemDefault()).date
                     }?.recipe?.value ?: "No meal planned",
-                    onClick = onMealPlannerClick
+                    onClick = { navController.navigate(Routes.MealPlanner) }
                 )
             }
 
@@ -209,21 +164,12 @@ fun Home(
                 )
             }
 
-            items(
-                listOf(
-                    "Cedric Pas" to "Admin",
-                    "Sandra Pas" to "Member",
-                    "Filip Pas" to "Member",
-                    "Angels Dubois" to "Member",
-                    "Angels Dubois" to "Member",
-                    "Angels Dubois" to "Member",
-                    "Angels Dubois" to "Member",
-                )
-            ) { (name, role) ->
+            items(members
+            ) { member ->
                 FamilyMemberCard(
-                    name,
-                    email = "${name.lowercase().replace(" ", "")}@gmail.com",
-                    role = role
+                    member.displayName,
+                    email = member.email,
+                    role = member.role
                 )
             }
         }
@@ -393,7 +339,9 @@ fun WeekdayRow(
         .ordinal
 
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         days.forEachIndexed { index, day ->
@@ -422,8 +370,6 @@ fun WeekdayRow(
 
 @Composable
 fun FamilyMemberCard(name: String, email: String, role: String) {
-    val badgeColor = if (role == "Admin") LightBlue else BackgroundColor
-    val badgeTextColor = if (role == "Admin") Color.White else Color.Black
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -441,32 +387,28 @@ fun FamilyMemberCard(name: String, email: String, role: String) {
                     color = MutedTextColor
                 )
             }
-            Spacer(Modifier.weight(1f))
-            Box(
-                modifier = Modifier
-                    .background(badgeColor, shape = RoundedCornerShape(12.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = role,
-                    color = badgeTextColor,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 12.sp
-                )
+            if (role == "Owner") {
+                Spacer(Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .background(LightBlue, shape = RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = role,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun HomeTopBar(
-    currentFamily: Family,
-    userId: String,
-    onChangeFamily: (Family) -> Unit,
-    onSignOut: () -> Unit
-) {
+fun HomeTopBar(navController: NavController) {
     var expanded by remember { mutableStateOf(false) }
-    var userFamilies = remember { mockFamilies.filter { it.members.contains(userId) } }
 
     Row(
         modifier = Modifier
@@ -479,7 +421,7 @@ fun HomeTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = currentFamily.name,
+            text = ("Famly " + CurrentUser.currentFamily?.name),
             style = MaterialTheme.typography.titleMedium,
             fontSize = 18.sp,
             modifier = Modifier.clickable { expanded = true }
@@ -491,7 +433,10 @@ fun HomeTopBar(
             modifier = Modifier.clickable { expanded = true }
         )
         Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = onSignOut) {
+        IconButton(onClick = {
+            FirebaseAuth.getInstance().signOut()
+            navController.navigate(Routes.Login.name)
+        }) {
             Icon(
                 Icons.AutoMirrored.Filled.ExitToApp,
                 contentDescription = "Sign Out",
@@ -506,45 +451,8 @@ fun HomeTopBar(
                 text = { Text("Create or Join a Family") },
                 onClick = {
                     expanded = false
+                    navController.navigate(Routes.FamilyEntryScreen.name)
                 }
-            )
-            userFamilies.forEach { family ->
-                DropdownMenuItem(
-                    text = { Text(family.name) },
-                    onClick = {
-                        expanded = false
-                        onChangeFamily(family)
-                    }
-                )
-            }
-        }
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    val mockFamily = Family(id = "fam1", name = "Pas Famly", members = listOf())
-    val mockUserId = "user1"
-
-    FamlyTheme {
-        Scaffold(topBar = { HomeTopBar(
-            currentFamily = mockFamily,
-            userId = mockUserId,
-            onChangeFamily = {},
-            onSignOut = {}
-        )
-        }) {
-            Home(
-                Modifier.padding(it),
-                onShoppingListsClick = {},
-                onTasksListsClick = {},
-                onMealPlannerClick = {},
-                onSignOut = {},
-                onChangeFamily = {},
-                currentFamily = mockFamily,
-                userId = mockUserId
             )
         }
     }

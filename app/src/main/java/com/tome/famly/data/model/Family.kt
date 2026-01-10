@@ -1,7 +1,12 @@
 package com.tome.famly.data.model
 
+import com.google.firebase.Timestamp
+
 data class Family(
-    val id: String = "",
+    var id: String = "",
     val name: String = "",
-    val members: List<String> = listOf()
+    val joinCode: String = "",
+    val members: List<String> = listOf(),
+    val createdAt: Timestamp = Timestamp.now(),
+    val createdBy: String = ""
 )
