@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
@@ -30,30 +32,31 @@ import com.tome.famly.data.CurrentUser
 import com.tome.famly.data.FirestoreDB
 import com.tome.famly.data.model.Family
 import com.tome.famly.ui.navigation.Routes
+import com.tome.famly.ui.viewmodels.FamilyEntryViewModel
 
 @Composable
-fun FamilyEntryScreen(navController: NavController) {
+fun FamilyEntryScreen(navController: NavController, viewModel: FamilyEntryViewModel = viewModel()) {
     CurrentUser.currentFamily = null
     val userId = CurrentUser.uid ?: return
-    var userFamilies by remember { mutableStateOf(listOf<Family>()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val userFamilies by viewModel.userFamilies.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val navigateFamily by viewModel.navigateToHome.collectAsState()
+
     var newFamilyName by remember { mutableStateOf("") }
     var joinCode by remember { mutableStateOf("") }
 
     LaunchedEffect(userId) {
-        FirestoreDB.db.collectionGroup("families")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val families = snapshot.mapNotNull { doc ->
-                    val family = doc.toObject(Family::class.java).apply { id = doc.id }
-                    if (family.members.contains(userId)) family else null
-                }
-                userFamilies = families
-                isLoading = false
+        viewModel.fetchUserFamilies()
+    }
+
+    LaunchedEffect(navigateFamily) {
+        navigateFamily?.let { family ->
+            CurrentUser.currentFamily = family
+            navController.navigate(Routes.Home.name) {
+                popUpTo(Routes.FamilyEntryScreen.name) { inclusive = true }
             }
-            .addOnFailureListener {
-                isLoading = false
-            }
+            viewModel.clearNavigation()
+        }
     }
 
     Column(
@@ -70,7 +73,6 @@ fun FamilyEntryScreen(navController: NavController) {
             Text("Fetching families...", style = MaterialTheme.typography.bodyMedium)
         } else if (userFamilies.isEmpty()) {
             Text("You are not in any families yet.", style = MaterialTheme.typography.bodyMedium)
-            Text(userId)
         } else {
             LazyColumn {
                 items(userFamilies.size) { index ->
@@ -121,22 +123,7 @@ fun FamilyEntryScreen(navController: NavController) {
             modifier = Modifier.fillMaxWidth()
         )
         Button(
-            onClick = {
-                if (newFamilyName.isNotBlank()) {
-                    generateJoinCode { joinCode ->
-                        val newFamily = Family(
-                            id = generateFamilyId(),
-                            name = newFamilyName,
-                            members = listOf(userId),
-                            joinCode = joinCode,
-                            createdAt = Timestamp.now()
-                        )
-                        FirestoreDB.db.collection("families")
-                            .document(newFamily.id)
-                            .set(newFamily)
-                    }
-                }
-            },
+            onClick = { viewModel.createFamily(newFamilyName) },
             modifier = Modifier.padding(top = 8.dp)
         ) {
             Text("Create")
@@ -153,47 +140,10 @@ fun FamilyEntryScreen(navController: NavController) {
             modifier = Modifier.fillMaxWidth()
         )
         Button(
-            onClick = {
-                if (joinCode.isNotBlank()) {
-                    FirestoreDB.db.collection("families")
-                        .whereEqualTo("joinCode", joinCode)
-                        .get()
-                        .addOnSuccessListener { snapshot ->
-                            val doc = snapshot.documents.firstOrNull()
-                            doc?.let { documentSnapshot ->
-                                val family = documentSnapshot.toObject(Family::class.java)
-                                if (family != null) {
-                                    val familyRef = documentSnapshot.reference
-                                    familyRef.update("members", FieldValue.arrayUnion(userId))
-                                }
-                            }
-                        }
-                }
-            },
+            onClick = { viewModel.joinFamily(joinCode) },
             modifier = Modifier.padding(top = 8.dp)
         ) {
             Text("Join")
         }
     }
-}
-
-fun generateFamilyId(): String {
-    val ref = FirestoreDB.db.collection("families").document()
-    return ref.id
-}
-
-fun generateJoinCode(length: Int = 6, callback: (String) -> Unit) {
-    val chars = ('A'..'Z') + ('0'..'9')
-    val code = (1..length).map { chars.random() }.joinToString("")
-
-    FirestoreDB.db.collection("families")
-        .whereEqualTo("joinCode", code)
-        .get()
-        .addOnSuccessListener { snapshot ->
-            if (snapshot.isEmpty) {
-                callback(code)
-            } else {
-                generateJoinCode(length, callback)
-            }
-        }
 }

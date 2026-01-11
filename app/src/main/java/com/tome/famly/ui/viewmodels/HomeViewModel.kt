@@ -3,16 +3,25 @@ package com.tome.famly.ui.viewmodels
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.firestore
 import com.tome.famly.data.CurrentUser
 import com.tome.famly.data.FirestoreDB
+import com.tome.famly.data.model.ShoppingList
+import com.tome.famly.data.model.ShoppingListItem
+import com.tome.famly.data.model.TaskList
+import com.tome.famly.data.model.TaskListItem
 import com.tome.famly.data.model.User
+import com.tome.famly.data.model.WideCardStats
 import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.*
+import kotlin.collections.emptyList
 
 class HomeViewModel: ViewModel() {
     private val _members = mutableStateListOf<User>()
     val members: List<User> = _members
+    val familyId = CurrentUser.currentFamily?.id
+
 
     fun getFamilyMembers() {
         val family = CurrentUser.currentFamily ?: return
@@ -30,9 +39,19 @@ class HomeViewModel: ViewModel() {
         }
     }
 
-    suspend fun getItemsToBuy(): Int {
-        val familyId = CurrentUser.currentFamily?.id
+    fun getCurrentWeekDates(): List<LocalDate> {
+        val today = Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault())
+            .date
 
+        val monday = today.minus(DatePeriod(days = today.dayOfWeek.ordinal))
+
+        return (0..6).map { i ->
+            monday.plus(DatePeriod(days = i))
+        }
+    }
+
+    suspend fun getItemsToBuy(): Int {
         if (familyId.isNullOrEmpty()) {
             return 0
         }
@@ -63,8 +82,6 @@ class HomeViewModel: ViewModel() {
     }
 
     suspend fun getTasksDue(): Int {
-        val familyId = CurrentUser.currentFamily?.id
-
         if (familyId.isNullOrEmpty()) {
             return 0
         }
@@ -94,7 +111,6 @@ class HomeViewModel: ViewModel() {
     }
 
     suspend fun getMealsPlannedCount(): Int {
-        val familyId = CurrentUser.currentFamily?.id
         val weekDates = getCurrentWeekDates()
         var count = 0
 
@@ -110,9 +126,9 @@ class HomeViewModel: ViewModel() {
             .await()
 
         for (mealDoc in mealPlans.documents) {
-            val timestamp = mealDoc.getTimestamp("date") ?: continue
+            val dateStr = mealDoc.getString("date") ?: continue
 
-            val mealDate = timestamp.toDate().toInstant().toKotlinInstant().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val mealDate = LocalDate.parse(dateStr)
 
             if (mealDate in weekDates) {
                 count++
@@ -122,16 +138,155 @@ class HomeViewModel: ViewModel() {
         return count
     }
 
-
-    fun getCurrentWeekDates(): List<LocalDate> {
-        val today = Clock.System.now()
-            .toLocalDateTime(TimeZone.currentSystemDefault())
-            .date
-
-        val monday = today.minus(DatePeriod(days = today.dayOfWeek.ordinal))
-
-        return (0..6).map { i ->
-            monday.plus(DatePeriod(days = i))
+    suspend fun getAllShoppingLists(): List<ShoppingList> {
+        if (familyId.isNullOrEmpty()) {
+            return emptyList()
         }
+
+        val snapshot = Firebase.firestore
+            .collection("families")
+            .document(familyId)
+            .collection("shoppingLists")
+            .get()
+            .await()
+
+        return snapshot.documents.map { doc ->
+                ShoppingList(
+                    id = doc.id,
+                    title = doc.getString("title") ?: "",
+                    items = emptyList(),
+                    createdAt = doc.getTimestamp("createdAt") ?: Timestamp(0, 0)
+                )
+        }
+    }
+
+    suspend fun getItemsForLists(): List<ShoppingList> {
+        if (familyId.isNullOrEmpty()) {
+            return emptyList()
+        }
+
+        val lists = getAllShoppingLists()
+
+        return lists.map { list ->
+            val itemsSnapshot = Firebase.firestore
+                .collection("families")
+                .document(familyId)
+                .collection("shoppingLists")
+                .document(list.id)
+                .collection("items")
+                .get()
+                .await()
+
+            val items = itemsSnapshot.documents.map { doc ->
+                ShoppingListItem(
+                    id = doc.id,
+                    name = doc.getString("name") ?: "",
+                    isChecked = doc.getBoolean("isChecked") ?: false
+                )
+            }
+
+            list.copy(items = items)
+        }
+    }
+
+    suspend fun getShoppingListsStats(): WideCardStats {
+        val shoppingLists = getItemsForLists()
+
+        val activeListsCount = shoppingLists.count()
+
+        val firstListWithUnchecked = shoppingLists.firstOrNull { list ->
+            list.items.any { !it.isChecked }
+        }
+
+
+        val firstListItemsLeft = firstListWithUnchecked?.items?.count { !it.isChecked } ?: 0
+
+        val allItems = shoppingLists.flatMap { it.items }
+        val totalItems = allItems.size
+        val unchecked = allItems.count { !it.isChecked }
+
+        return WideCardStats(
+            activeListsCount = activeListsCount,
+            firstListItemsLeft = firstListItemsLeft,
+            firstListName = firstListWithUnchecked?.title ?: "",
+            totalItems = totalItems,
+            uncheckedItems = unchecked,
+        )
+    }
+
+    suspend fun getAllTaskLists(): List<TaskList> {
+        if (familyId.isNullOrEmpty()) {
+            return emptyList()
+        }
+
+        val snapshot = Firebase.firestore
+            .collection("families")
+            .document(familyId)
+            .collection("taskLists")
+            .get()
+            .await()
+
+        return snapshot.documents.map { doc ->
+            TaskList(
+                id = doc.id,
+                title = doc.getString("title") ?: "",
+                items = emptyList(),
+                createdAt = doc.getTimestamp("createdAt") ?: Timestamp(0, 0)
+            )
+        }
+    }
+
+    suspend fun getTasksForLists(): List<TaskList> {
+        if (familyId.isNullOrEmpty()) {
+            return emptyList()
+        }
+
+        val lists = getAllTaskLists()
+
+        return lists.map { list ->
+            val itemsSnapshot = Firebase.firestore
+                .collection("families")
+                .document(familyId)
+                .collection("taskLists")
+                .document(list.id)
+                .collection("tasks")
+                .get()
+                .await()
+
+            val items = itemsSnapshot.documents.map { doc ->
+                TaskListItem(
+                    id = doc.id,
+                    name = doc.getString("name") ?: "",
+                    isChecked = doc.getBoolean("isChecked") ?: false
+                )
+            }
+
+            list.copy(items = items)
+        }
+    }
+
+    suspend fun getTaskListsStats(): WideCardStats {
+        val taskLists = getTasksForLists()
+
+        val activeListsCount = taskLists.count()
+
+        val firstListWithUnchecked = taskLists.firstOrNull { list ->
+            list.items.any { !it.isChecked }
+        }
+
+
+        val firstListItemsLeft = firstListWithUnchecked?.items?.count { !it.isChecked } ?: 0
+
+        val allItems = taskLists.flatMap { it.items }
+        val totalItems = allItems.size
+        val unchecked = allItems.count { !it.isChecked }
+
+        return WideCardStats(
+            activeListsCount = activeListsCount,
+            firstListItemsLeft = firstListItemsLeft,
+            firstListName = firstListWithUnchecked?.title ?: "",
+            totalItems = totalItems,
+            uncheckedItems = unchecked,
+        )
     }
 }

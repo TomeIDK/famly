@@ -1,6 +1,8 @@
 package com.tome.famly.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -27,9 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,42 +42,65 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.tome.famly.data.model.ShoppingList
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.tome.famly.ui.components.TopBar
 import com.tome.famly.ui.theme.BackgroundColor
-import com.tome.famly.ui.theme.FamlyTheme
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
-import com.tome.famly.data.mock.mockShoppingLists
-import com.tome.famly.data.model.ShoppingListItem
+import com.tome.famly.ui.viewmodels.ShoppingListViewModel
 
 @Composable
-fun ShoppingListScreen(shoppingList: ShoppingList, onBackClick: (() -> Unit)?) {
+fun ShoppingListScreen(shoppingListId: String, navController: NavController, viewModel: ShoppingListViewModel = viewModel()) {
+    val list = viewModel.getShoppingListById(shoppingListId)
+
+    val listState = remember { mutableStateOf(list) }
+
+    LaunchedEffect(shoppingListId) {
+        if (listState.value == null) {
+            listState.value = viewModel.fetchShoppingListById(shoppingListId)
+        }
+        viewModel.loadLists()
+    }
+
+    val shoppingList = listState.value
+
+    if (shoppingList == null) {
+        Text("List not found")
+        return
+    }
+
     Scaffold(
         topBar = {
             TopBar(
                 title = shoppingList.title,
                 titleIcon = Icons.Outlined.ShoppingCart,
                 titleIconColor = LightBlue,
-                onBackClick = onBackClick
+                onBackClick = { navController.popBackStack() }
             )
         }
     ) { innerPadding ->
-        ShoppingList( modifier = Modifier.padding(innerPadding), shoppingList = shoppingList)
+        ShoppingList( modifier = Modifier.padding(innerPadding), shoppingListId = shoppingList.id)
     }
 }
 
 @Composable
-fun ShoppingList(modifier: Modifier = Modifier, shoppingList: ShoppingList) {
-    val items = remember { mutableStateListOf(*shoppingList.items.toTypedArray()) }
+fun ShoppingList(modifier: Modifier = Modifier, shoppingListId: String, viewModel: ShoppingListViewModel = viewModel()) {
+    val lists by viewModel.lists
+    val shoppingList = lists.firstOrNull { it.id == shoppingListId }
+
+    if (shoppingList == null) {
+        Text("List not found")
+        return
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(BackgroundColor)
     ) {
-        AddItemField(items)
+        AddItemField(shoppingListId = shoppingList.id)
         OutlinedCard(
             modifier = Modifier
                 .fillMaxWidth()
@@ -90,10 +116,15 @@ fun ShoppingList(modifier: Modifier = Modifier, shoppingList: ShoppingList) {
                     .padding(top = 8.dp)
             ) {
                 item {
-                    ItemsChecked(items.count { it.isChecked.value }, items.count())
+                    ItemsChecked(shoppingList.items.count { it.isChecked }, shoppingList.items.count())
                 }
-                items(items) { item ->
-                    ListItem(name = item.name, checked = item.isChecked.value, onCheckedChange = { item.isChecked.value = it })
+                items(shoppingList.items) { item ->
+                    ListItem(
+                        name = item.name,
+                        isChecked = item.isChecked,
+                        onCheckedChange = { newChecked -> viewModel.toggleItemChecked(shoppingList.id, item.id, newChecked) },
+                        onDelete = { viewModel.deleteShoppingListItem(shoppingList.id, item.id) }
+                    )
                 }
             }
         }
@@ -101,7 +132,7 @@ fun ShoppingList(modifier: Modifier = Modifier, shoppingList: ShoppingList) {
 }
 
 @Composable
-fun AddItemField(list: MutableList<ShoppingListItem>) {
+fun AddItemField(shoppingListId: String, viewModel: ShoppingListViewModel = viewModel()) {
     var text by remember { mutableStateOf("") }
 
     TextField(
@@ -117,8 +148,10 @@ fun AddItemField(list: MutableList<ShoppingListItem>) {
         placeholder = { Text("Add an item...") },
         trailingIcon = {
             IconButton(onClick = {
-                list.add(ShoppingListItem(id = list.size + 1, name = text))
-                text = ""
+                if (text.isNotBlank()) {
+                    viewModel.addItemToShoppingList(shoppingListId, text)
+                    text = ""
+                }
             }) {
                 Icon(Icons.Default.Add, contentDescription = null, tint = LightBlue)
             }
@@ -139,9 +172,36 @@ fun ItemsChecked(itemsChecked: Int, maxItems: Int) {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ListItem(name: String, checked: Boolean = false, onCheckedChange: (Boolean) -> Unit) {
+fun ListItem(name: String, isChecked: Boolean, onCheckedChange: (Boolean) -> Unit, onDelete: (() -> Unit)? = null) {
+    var checked by remember { mutableStateOf(isChecked) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete item?") },
+            text = { Text("Are you sure you want to delete '$name'") },
+            confirmButton = {
+                Button(onClick = {
+                    onDelete()
+                    showDeleteDialog = false
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
+        modifier = Modifier
+            .combinedClickable(onClick = {}, onLongClick = { showDeleteDialog = true }),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
@@ -156,23 +216,18 @@ fun ListItem(name: String, checked: Boolean = false, onCheckedChange: (Boolean) 
         ) {
             Checkbox(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = {
+                    checked = it
+                    onCheckedChange(it)
+                                  },
                 colors = CheckboxDefaults.colors(
                     checkedColor = LightBlue,
                     uncheckedColor = MutedTextColor
                 )
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = name, style = MaterialTheme.typography.bodyLarge, textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None)
+            Text(text = name, style = MaterialTheme.typography.bodyLarge, textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None)
         }
     }
 
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ShoppingListScreenPreview() {
-    FamlyTheme {
-        ShoppingListScreen(shoppingList = mockShoppingLists[0], onBackClick = {})
-    }
 }

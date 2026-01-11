@@ -55,15 +55,14 @@ import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.tome.famly.R
 import com.tome.famly.data.CurrentUser
-import com.tome.famly.data.mock.mockMealPlans
-import com.tome.famly.data.mock.mockShoppingLists
-import com.tome.famly.data.mock.mockTasks
+import com.tome.famly.data.model.WideCardStats
 import com.tome.famly.ui.navigation.Routes
 import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.CustomOrange
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
 import com.tome.famly.ui.viewmodels.HomeViewModel
+import com.tome.famly.ui.viewmodels.MealPlannerViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -71,22 +70,30 @@ import kotlinx.datetime.toLocalDateTime
 @Composable
 fun Home(navController: NavController, viewModel: HomeViewModel = viewModel<HomeViewModel>()) {
     val members by remember { derivedStateOf { viewModel.members } }
+
     var toBuy by remember { mutableStateOf(0) }
     var choresDue by remember { mutableStateOf(0) }
     var mealsPlanned by remember { mutableStateOf(0) }
+
+    var shoppingStats by remember { mutableStateOf(WideCardStats("", 0, 0, 0, 0)) }
+    var tasksStats by remember { mutableStateOf(WideCardStats("", 0, 0, 0, 0)) }
+
+    val mealPlanViewModel: MealPlannerViewModel = viewModel()
+    val weekMealPlans by mealPlanViewModel.weekMealPlans
+    val today = Clock.System.now()
+        .toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+    val todayMealPlan = weekMealPlans[today]?.recipe ?: "No meal planned"
 
     LaunchedEffect(Unit) {
         viewModel.getFamilyMembers()
         toBuy = viewModel.getItemsToBuy()
         choresDue = viewModel.getTasksDue()
         mealsPlanned = viewModel.getMealsPlannedCount()
-    }
 
-    val firstShoppingListWithUnchecked = mockShoppingLists.firstOrNull { list ->
-        list.items.any { !it.isChecked.value }
-    }
-    val firstTaskListWithUnchecked = mockTasks.firstOrNull { list ->
-        list.items.any { !it.isChecked.value }
+        shoppingStats = viewModel.getShoppingListsStats()
+        tasksStats = viewModel.getTaskListsStats()
+
+        mealPlanViewModel.getWeekMealPlans(getCurrentWeekDates())
     }
 
     Scaffold(
@@ -122,36 +129,29 @@ fun Home(navController: NavController, viewModel: HomeViewModel = viewModel<Home
             item {
                 WideCard(
                     title = "Shopping Lists",
-                    subtitle = if (firstShoppingListWithUnchecked != null) "${firstShoppingListWithUnchecked.title} ● ${firstShoppingListWithUnchecked.items.count { !it.isChecked.value }} items left"
-                    else "All shopping lists completed!",
-                    progress = (mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count { it.isChecked.value } }.toFloat() / mockShoppingLists.sumOf { shoppingList ->  shoppingList.items.count() }.toFloat()),
                     icon = Icons.Outlined.ShoppingCart,
-                    "${mockShoppingLists.size} active",
+                    stats = shoppingStats,
                     color = LightBlue,
-                    onClick = { navController.navigate(Routes.ShoppingLists.name) }
+                    route = Routes.ShoppingLists,
+                    navController = navController
                 )
             }
             // Tasks
             item {
                 WideCard(
                     title = "Chores & Tasks",
-                    subtitle = if (firstTaskListWithUnchecked != null) "${firstTaskListWithUnchecked.title} ● ${firstTaskListWithUnchecked.items.count { !it.isChecked.value }} tasks left"
-                    else "All tasks completed!",
-                    progress = (mockTasks.sumOf { taskList ->  taskList.items.count { it.isChecked.value } }.toFloat() / mockTasks.sumOf { taskList ->  taskList.items.count() }.toFloat()),
                     icon = Icons.Outlined.CheckCircle,
-                    "${mockTasks.size} active",
+                    stats = tasksStats,
                     color = CustomOrange,
-                    onClick = { navController.navigate(Routes.TasksLists.name) }
+                    route = Routes.TasksLists,
+                    navController = navController
                 )
             }
             // Meal Planning
             item {
                 MealPlanningCard(
-                    subtitle = mockMealPlans.find {
-                        it.date == Clock.System.now()
-                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
-                    }?.recipe?.value ?: "No meal planned",
-                    onClick = { navController.navigate(Routes.MealPlanner) }
+                    subtitle = todayMealPlan,
+                    onClick = { navController.navigate(Routes.MealPlanner.name) }
                 )
             }
 
@@ -205,12 +205,12 @@ fun SmallCard(number: Int, bottomText: String, color: Color) {
 }
 
 @Composable
-fun WideCard(title: String, subtitle: String, progress: Float, icon: ImageVector, badgeText: String, color: Color, onClick: () -> Unit = {}) {
+fun WideCard(title: String, icon: ImageVector, color: Color, stats: WideCardStats, route: Routes, navController: NavController) {
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onClick() },
+            .clickable { navController.navigate(route.name) },
         elevation = CardDefaults.outlinedCardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -236,12 +236,15 @@ fun WideCard(title: String, subtitle: String, progress: Float, icon: ImageVector
                 Text(text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold)
-                Text(text = subtitle,
+                Text(text = "${stats.firstListName} ● ${stats.firstListItemsLeft} items left",
                     modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MutedTextColor)
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = {
+                        if (stats.totalItems > 0) {
+                            (stats.totalItems.toFloat() - stats.uncheckedItems.toFloat()) / stats.totalItems.toFloat()
+                        } else 0f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp),
@@ -254,7 +257,7 @@ fun WideCard(title: String, subtitle: String, progress: Float, icon: ImageVector
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = badgeText,
+                    text = "${stats.activeListsCount} active",
                     fontWeight = FontWeight.Medium,
                     fontSize = 12.sp
                 )
@@ -448,7 +451,7 @@ fun HomeTopBar(navController: NavController) {
             onDismissRequest = { expanded = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Create or Join a Family") },
+                text = { Text("Create or join a Famly") },
                 onClick = {
                     expanded = false
                     navController.navigate(Routes.FamilyEntryScreen.name)

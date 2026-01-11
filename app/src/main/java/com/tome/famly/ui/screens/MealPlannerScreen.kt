@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,20 +51,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.tome.famly.R
-import com.tome.famly.data.mock.mockMealPlans
-import com.tome.famly.data.mock.mockRecipes
 import com.tome.famly.data.model.MealPlan
 import com.tome.famly.data.model.MealPlannerTab
 import com.tome.famly.data.model.Recipe
 import com.tome.famly.ui.components.TopBar
 import com.tome.famly.ui.theme.BackgroundColor
-import com.tome.famly.ui.theme.FamlyTheme
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
+import com.tome.famly.ui.viewmodels.MealPlannerViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -71,7 +72,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.plus
 
-fun getCurrentWeekDates(): List<LocalDate> {
+fun getCurrentWeekDates(): List<String> {
     val today = Clock.System.now()
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
@@ -80,7 +81,7 @@ fun getCurrentWeekDates(): List<LocalDate> {
     val monday = today.minus(DatePeriod(days = dayIndex))
 
     return (0..6).map { i ->
-        monday.plus(DatePeriod(days = i))
+        monday.plus(DatePeriod(days = i)).toString()
     }
 }
 
@@ -104,11 +105,11 @@ fun LocalDate.toDisplayString(): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MealPlannerScreen(onBackClick: () -> Unit) {
+fun MealPlannerScreen(navController: NavController) {
     var selectedTab by remember { mutableStateOf(MealPlannerTab.WEEKPLAN) }
     var showAddRecipeBottomSheet by remember { mutableStateOf(false) }
     var showChangeMealPlanBottomSheet by remember { mutableStateOf(false) }
-    var selectedDateForChange by remember { mutableStateOf<LocalDate?>(null) }
+    var selectedDateForChange by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -116,7 +117,7 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
                 title = "Meal Planner",
                 titleIcon = ImageVector.vectorResource(R.drawable.outline_fork_spoon_24),
                 titleIconColor = LightBlue,
-                onBackClick = onBackClick
+                onBackClick = { navController.popBackStack() }
             )
         },
         floatingActionButton = {
@@ -141,7 +142,6 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
             MealPlannerTabSelector(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
             when (selectedTab) {
                 MealPlannerTab.WEEKPLAN -> MealPlanner(
-                    modifier = Modifier.padding(innerPadding),
                     onChangeClick = { date ->
                     selectedDateForChange = date
                     showChangeMealPlanBottomSheet = true
@@ -151,29 +151,15 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
         }
 
         if (showAddRecipeBottomSheet) {
-            AddRecipeBottomSheet(
-                onDismiss = { showAddRecipeBottomSheet = false },
-                onSave = { newRecipe ->
-                    mockRecipes.add(newRecipe)
-                }
-            )
+            AddRecipeBottomSheet(onDismiss = { showAddRecipeBottomSheet = false })
         }
         
-        if (showChangeMealPlanBottomSheet) {
+        if (showChangeMealPlanBottomSheet && selectedDateForChange != null) {
             ChangeMealPlanBottomSheet(
-                onDismiss = { showChangeMealPlanBottomSheet = false },
-                onSave = { selectedRecipe ->
-                    selectedDateForChange?.let { date ->
-                        val plan = mockMealPlans.find { it.date == selectedDateForChange }
-                        if (plan != null) {
-                            plan.recipe.value = selectedRecipe?.title
-                        } else {
-                            mockMealPlans.add(MealPlan(selectedDateForChange!!, mutableStateOf(selectedRecipe?.title)))
-                        }
-
-                        selectedDateForChange = null
-                    }
+                selectedDate = selectedDateForChange!!,
+                onDismiss = {
                     showChangeMealPlanBottomSheet = false
+                    selectedDateForChange = null
                 }
             )
         }
@@ -182,16 +168,20 @@ fun MealPlannerScreen(onBackClick: () -> Unit) {
 }
 
 @Composable
-fun MealPlanner(modifier: Modifier = Modifier, onChangeClick: (LocalDate) -> Unit) {
+fun MealPlanner(onChangeClick: (String) -> Unit, viewModel: MealPlannerViewModel = viewModel()) {
     val weekDates = getCurrentWeekDates()
+    val mealPlans by viewModel.weekMealPlans
+
+    LaunchedEffect(Unit) {
+        viewModel.getWeekMealPlans(weekDates)
+    }
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         items(weekDates.size) { index ->
             val date = weekDates[index]
-            val planForDay = mockMealPlans.find { it.date == date }
-                ?: MealPlan(date, mutableStateOf((null)))
+            val planForDay = mealPlans[date] ?: MealPlan(date, null)
 
             MealPlanCard(mealPlan = planForDay, onChangeClick = { onChangeClick(date) })
         }
@@ -202,7 +192,8 @@ fun MealPlanner(modifier: Modifier = Modifier, onChangeClick: (LocalDate) -> Uni
 @Composable
 fun MealPlanCard(mealPlan: MealPlan, onChangeClick: () -> Unit) {
     OutlinedCard(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
             .padding(8.dp)
             .shadow(
                 elevation = 4.dp,
@@ -210,10 +201,12 @@ fun MealPlanCard(mealPlan: MealPlan, onChangeClick: () -> Unit) {
             )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp, start = 16.dp, end = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, bottom = 12.dp, start = 16.dp, end = 16.dp)
         ) {
             Text(
-                text = mealPlan.date.toDisplayString(),
+                text = mealPlan.date,
                 color = MutedTextColor,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -232,7 +225,7 @@ fun MealPlanCard(mealPlan: MealPlan, onChangeClick: () -> Unit) {
                     tint = LightBlue,
                 )
                 Text(
-                    text = mealPlan.recipe.value ?: "No meal planned",
+                    text = mealPlan.recipe ?: "No meal planned",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Medium,
                     fontSize = 20.sp
@@ -303,10 +296,7 @@ fun MealPlannerTabSelector(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddRecipeBottomSheet(
-    onDismiss: () -> Unit,
-    onSave: (Recipe) -> Unit
-) {
+fun AddRecipeBottomSheet(onDismiss: () -> Unit, viewModel: MealPlannerViewModel = viewModel()) {
     var title by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
     var link by remember { mutableStateOf("") }
@@ -322,16 +312,19 @@ fun AddRecipeBottomSheet(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().drawBehind {
-                    val strokeWidth = 1.dp.toPx()
-                    val y = size.height - strokeWidth / 2
-                    drawLine(
-                        color = Color.Gray,
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = strokeWidth
-                    )
-                }.padding(bottom = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .drawBehind {
+                        val strokeWidth = 1.dp.toPx()
+                        val y = size.height - strokeWidth / 2
+                        drawLine(
+                            color = Color.Gray,
+                            start = Offset(0f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = strokeWidth
+                        )
+                    }
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
 
@@ -402,12 +395,7 @@ fun AddRecipeBottomSheet(
                 }
 
                 Button(onClick = {
-                    val recipe = Recipe(
-                        title = title,
-                        description = desc,
-                        link = link
-                    )
-                    onSave(recipe)
+                    viewModel.addRecipe(title = title, description = desc, link = link)
                     onDismiss()
                 },
                     modifier = Modifier.fillMaxWidth(),
@@ -429,9 +417,16 @@ fun AddRecipeBottomSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChangeMealPlanBottomSheet(
+    selectedDate: String,
     onDismiss: () -> Unit,
-    onSave: (Recipe?) -> Unit
+    viewModel: MealPlannerViewModel = viewModel()
 ) {
+    val recipes by viewModel.recipes
+
+    LaunchedEffect(Unit) {
+        viewModel.getRecipes()
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState()
@@ -443,16 +438,19 @@ fun ChangeMealPlanBottomSheet(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().drawBehind {
-                    val strokeWidth = 1.dp.toPx()
-                    val y = size.height - strokeWidth / 2
-                    drawLine(
-                        color = Color.Gray,
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = strokeWidth
-                    )
-                }.padding(bottom = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .drawBehind {
+                        val strokeWidth = 1.dp.toPx()
+                        val y = size.height - strokeWidth / 2
+                        drawLine(
+                            color = Color.Gray,
+                            start = Offset(0f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = strokeWidth
+                        )
+                    }
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
 
@@ -462,7 +460,10 @@ fun ChangeMealPlanBottomSheet(
             }
 
             Button(
-                onClick = { onSave(null) },
+                onClick = {
+                    viewModel.setMealPlan(selectedDate, null)
+                    onDismiss()
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
             ) {
@@ -474,8 +475,14 @@ fun ChangeMealPlanBottomSheet(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(mockRecipes.size) { index ->
-                    ChangeMealPlanRecipeCard(recipe = mockRecipes[index], onClick = { onSave(mockRecipes[index]) })
+                items(recipes) { recipe ->
+                    ChangeMealPlanRecipeCard(
+                        recipe = recipe,
+                        onClick = {
+                            viewModel.setMealPlan(selectedDate, recipe.id)
+                            onDismiss()
+                        }
+                    )
                 }
             }
         }
@@ -512,13 +519,5 @@ fun ChangeMealPlanRecipeCard(
                 )
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MealPlannerScreenPreview() {
-    FamlyTheme {
-        MealPlannerScreen(onBackClick = {})
     }
 }

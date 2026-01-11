@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.tome.famly.data.mock.mockTasks
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.tome.famly.data.model.TaskList
 import com.tome.famly.data.model.TaskListItem
 import com.tome.famly.ui.components.TopBar
@@ -37,30 +39,55 @@ import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.CustomOrange
 import com.tome.famly.ui.theme.FamlyTheme
 import com.tome.famly.ui.theme.LightBlue
+import com.tome.famly.ui.viewmodels.TaskListViewModel
 
 @Composable
-fun TaskListScreen(taskList: TaskList, onBackClick: (() -> Unit)?) {
+fun TaskListScreen(taskListId: String, navController: NavController, viewModel: TaskListViewModel = viewModel()) {
+    val list = viewModel.getTaskListById(taskListId)
+
+    val listState = remember { mutableStateOf(list) }
+
+    LaunchedEffect(taskListId) {
+        if (listState.value == null) {
+            listState.value = viewModel.fetchTaskListById(taskListId)
+        }
+        viewModel.loadLists()
+    }
+
+    val taskList = listState.value
+
+    if (taskList == null) {
+        Text("List not found")
+        return
+    }
+
     Scaffold(
         topBar = {
             TopBar(
                 title = taskList.title,
                 titleIcon = Icons.Outlined.CheckCircle,
                 titleIconColor = CustomOrange,
-                onBackClick = onBackClick
+                onBackClick = { navController.popBackStack() }
             )
         }
     ) { innerPadding ->
-        TaskList(modifier = Modifier.padding(innerPadding), taskList = taskList)
+        TaskList(modifier = Modifier.padding(innerPadding), taskListId = taskList.id)
     }
 }
 
 @Composable
-fun TaskList(modifier: Modifier = Modifier, taskList: TaskList) {
-    val items = remember { mutableStateListOf(*taskList.items.toTypedArray()) }
+fun TaskList(modifier: Modifier = Modifier, taskListId: String, viewModel: TaskListViewModel = viewModel()) {
+    val lists by viewModel.lists
+    val taskList = lists.firstOrNull { it.id == taskListId }
+
+    if (taskList == null) {
+        Text("List not found")
+        return
+    }
     Column(
         modifier = modifier.fillMaxSize().background(BackgroundColor)
     ) {
-        AddTaskListItemField(items)
+        AddTaskListItemField(taskListId = taskList.id)
         OutlinedCard(
             modifier = Modifier
                 .fillMaxWidth()
@@ -76,10 +103,15 @@ fun TaskList(modifier: Modifier = Modifier, taskList: TaskList) {
                     .padding(top = 8.dp)
             ) {
                 item {
-                    ItemsChecked(items.count { it.isChecked.value }, items.count())
+                    ItemsChecked(taskList.items.count { it.isChecked }, taskList.items.count())
                 }
-                items(items) { item ->
-                    ListItem(name = item.name, checked = item.isChecked.value, onCheckedChange = { item.isChecked.value = it })
+                items(taskList.items) { item ->
+                    ListItem(
+                        name = item.name,
+                        isChecked = item.isChecked,
+                        onCheckedChange = { newChecked -> viewModel.toggleTaskChecked(taskList.id, item.id, newChecked) },
+                        onDelete = { viewModel.deleteTask(taskList.id, item.id) }
+                    )
                 }
             }
         }
@@ -87,7 +119,7 @@ fun TaskList(modifier: Modifier = Modifier, taskList: TaskList) {
 }
 
 @Composable
-fun AddTaskListItemField(list: MutableList<TaskListItem>) {
+fun AddTaskListItemField(taskListId: String, viewModel: TaskListViewModel = viewModel()) {
     var text by remember { mutableStateOf("") }
 
     TextField(
@@ -101,20 +133,14 @@ fun AddTaskListItemField(list: MutableList<TaskListItem>) {
         placeholder = { Text("Add an item...") },
         trailingIcon = {
             IconButton(onClick = {
-                list.add(TaskListItem(id = list.size + 1, name = text))
-                text = ""
+                if (text.isNotBlank()) {
+                    viewModel.addItemToTaskList(taskListId, text)
+                    text = ""
+                }
             }) {
                 Icon(Icons.Default.Add, contentDescription = null, tint = LightBlue)
             }
         },
         singleLine = true
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun TaskListScreenPreview() {
-    FamlyTheme {
-        TaskListScreen(taskList = mockTasks[0], onBackClick = {})
-    }
 }

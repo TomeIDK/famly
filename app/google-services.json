@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "645101667792-5q96qkvc1c8jkd1d452ds7g5kmsujgbd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tome.famly",
+            "certificate_hash": "50f9110439be39427a2533d05a13bcabc4cce061"
+          }
+        },
+        {
           "client_id": "645101667792-2eb39quo6lcrnoqg6v7eajickh55ng9a.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -5,6 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import kotlinx.datetime.LocalDate
 
 data class MealPlan(
-    val date: LocalDate,
-    var recipe: MutableState<String?> = mutableStateOf(null)
+    val date: String = "",
+    var recipe: String? = null
 )

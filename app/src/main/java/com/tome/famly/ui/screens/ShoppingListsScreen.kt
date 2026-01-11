@@ -1,9 +1,9 @@
 package com.tome.famly.ui.screens
 
-import android.hardware.lights.Light
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -32,11 +33,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,17 +49,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tome.famly.data.mock.mockShoppingLists
-import com.tome.famly.data.model.ShoppingList
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.tome.famly.ui.components.TopBar
+import com.tome.famly.ui.navigation.Routes
 import com.tome.famly.ui.theme.BackgroundColor
-import com.tome.famly.ui.theme.CustomOrange
-import com.tome.famly.ui.theme.FamlyTheme
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
+import com.tome.famly.ui.viewmodels.ShoppingListViewModel
 import kotlin.random.Random
 
 fun randomColor(): Color {
@@ -74,15 +74,16 @@ fun randomColor(): Color {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShoppingListsScreen(onBackClick: (() -> Unit)?, onShoppingListClick: (Int) -> Unit) {
+fun ShoppingListsScreen(navController: NavController, viewModel: ShoppingListViewModel = viewModel()) {
     var showBottomSheet by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopBar(
                 title = "Shopping Lists",
                 titleIcon = Icons.Outlined.ShoppingCart,
                 titleIconColor = LightBlue,
-                onBackClick = onBackClick
+                onBackClick = { navController.popBackStack() }
             )
         },
         floatingActionButton = {
@@ -97,7 +98,7 @@ fun ShoppingListsScreen(onBackClick: (() -> Unit)?, onShoppingListClick: (Int) -
         }
     ) { innerPadding ->
         var newListName by remember { mutableStateOf("") }
-        ShoppingLists( modifier = Modifier.padding(innerPadding), onShoppingListClick = onShoppingListClick)
+        ShoppingLists(modifier = Modifier.padding(innerPadding), navController = navController)
 
         if (showBottomSheet) {
             ModalBottomSheet(
@@ -150,7 +151,13 @@ fun ShoppingListsScreen(onBackClick: (() -> Unit)?, onShoppingListClick: (Int) -
                         )
                         Text("Give your shopping list a memorable name", style = MaterialTheme.typography.labelMedium, color = MutedTextColor, modifier = Modifier.padding(top = 6.dp))
                     }
-                    Button(onClick = { showBottomSheet = false },
+                    Button(onClick = {
+                        if (newListName.isNotBlank()) {
+                            viewModel.addShoppingList(newListName)
+                            newListName = ""
+                            showBottomSheet = false
+
+                        } },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -166,22 +173,60 @@ fun ShoppingListsScreen(onBackClick: (() -> Unit)?, onShoppingListClick: (Int) -
 }
 
 @Composable
-fun ShoppingLists(modifier: Modifier = Modifier, onShoppingListClick: (Int) -> Unit) {
+fun ShoppingLists(modifier: Modifier = Modifier, navController: NavController) {
+    val viewModel: ShoppingListViewModel = viewModel()
+    val lists by viewModel.lists
+
+    LaunchedEffect(Unit) {
+        viewModel.loadLists()
+    }
+
     LazyColumn(modifier = modifier.fillMaxSize().background(BackgroundColor)) {
-        items(mockShoppingLists) { list ->
-            ShoppingListCard(id = list.id, name = list.title, uncheckedItems = list.items.count { !it.isChecked.value }, onClick = onShoppingListClick)
+        items(lists) { list ->
+            ShoppingListCard(
+                id = list.id,
+                name = list.title,
+                uncheckedItems = list.items.count { !it.isChecked },
+                navController = navController
+            )
         }
     }
 }
 
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ShoppingListCard(id: Int, name: String, uncheckedItems: Int, onClick: (Int) -> Unit) {
+fun ShoppingListCard(id: String, name: String, uncheckedItems: Int, navController: NavController, viewModel: ShoppingListViewModel = viewModel()) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete list?") },
+            text = { Text("Are you sure you want to delete '$name'") },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.deleteShoppingList(id)
+                    showDeleteDialog = false
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding()
-            .clickable { onClick(id) },
+            .combinedClickable(
+                onClick = { navController.navigate("${Routes.ShoppingListDetail.name}/$id") },
+                onLongClick = { showDeleteDialog = true }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = Color.White,
         ),
@@ -234,14 +279,5 @@ fun ShoppingListCard(id: Int, name: String, uncheckedItems: Int, onClick: (Int) 
             }
 
         }
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun ShoppingListsScreenPreview() {
-    FamlyTheme {
-        ShoppingListsScreen(onShoppingListClick = {}, onBackClick = {})
     }
 }

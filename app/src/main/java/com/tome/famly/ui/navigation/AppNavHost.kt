@@ -1,18 +1,11 @@
 package com.tome.famly.ui.navigation
 
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.google.firebase.auth.FirebaseAuth
-import com.tome.famly.data.mock.mockShoppingLists
-import com.tome.famly.data.mock.mockTasks
-import com.tome.famly.data.model.Family
-import com.tome.famly.data.model.ShoppingList
-import com.tome.famly.data.model.TaskList
 import com.tome.famly.ui.screens.FamilyEntryScreen
 import com.tome.famly.ui.screens.Home
 import com.tome.famly.ui.screens.LoginScreen
@@ -47,53 +40,41 @@ fun AppNavHost(
 
         // shopping lists
         composable(route = Routes.ShoppingLists.name) {
-            ShoppingListsScreen(
-                onBackClick = { navController.popBackStack() },
-                onShoppingListClick = { shoppingListId -> navController.navigate("${Routes.ShoppingListDetail.name}/$shoppingListId") }
-            )
+            ShoppingListsScreen(navController = navController)
         }
 
         // shopping list detail
         composable(route = "${Routes.ShoppingListDetail.name}/{shoppingListId}",
-            arguments = listOf(navArgument("shoppingListId") { type = NavType.IntType })
+            arguments = listOf(navArgument("shoppingListId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val shoppingListId = backStackEntry.arguments?.getInt("shoppingListId") ?: 0
-            val shoppingList: ShoppingList? = mockShoppingLists.find { it.id == shoppingListId }
+            val shoppingListId = backStackEntry.arguments?.getString("shoppingListId") ?: return@composable
 
-            shoppingList?.let {
-                ShoppingListScreen(shoppingList = shoppingList, onBackClick = {
-                    navController.popBackStack()
-                })
-            }
+            ShoppingListScreen(
+                shoppingListId = shoppingListId,
+                navController = navController,
+            )
         }
 
         // task lists
         composable(route = Routes.TasksLists.name) {
-            TasksListsScreen(
-                onBackClick = { navController.popBackStack() },
-                onTaskListClick = { taskId -> navController.navigate("${Routes.TaskListDetail.name}/$taskId")}
-            )
+            TasksListsScreen(navController = navController)
         }
 
         // task list detail
-        composable(route = "${Routes.TaskListDetail.name}/{taskId}",
-            arguments = listOf(navArgument("taskId") { type = NavType.IntType })
+        composable(route = "${Routes.TaskListDetail.name}/{taskListId}",
+            arguments = listOf(navArgument("taskListId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val taskId = backStackEntry.arguments?.getInt("taskId") ?: 0
-            val task: TaskList? = mockTasks.find { it.id == taskId }
+            val taskListId = backStackEntry.arguments?.getString("taskListId") ?: return@composable
 
-            task?.let {
-                TaskListScreen(taskList = it, onBackClick = {
-                    navController.popBackStack()
-                })
-            }
+            TaskListScreen(
+                taskListId = taskListId,
+                navController = navController,
+            )
         }
 
         // meal planner
         composable(route = Routes.MealPlanner.name) {
-            MealPlannerScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            MealPlannerScreen(navController = navController)
         }
     }
 }

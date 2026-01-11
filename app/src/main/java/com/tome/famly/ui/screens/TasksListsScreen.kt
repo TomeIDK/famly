@@ -1,7 +1,9 @@
 package com.tome.famly.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -36,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,16 +51,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tome.famly.data.mock.mockTasks
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.tome.famly.ui.components.TopBar
+import com.tome.famly.ui.navigation.Routes
 import com.tome.famly.ui.theme.BackgroundColor
 import com.tome.famly.ui.theme.CustomOrange
-import com.tome.famly.ui.theme.FamlyTheme
 import com.tome.famly.ui.theme.LightBlue
 import com.tome.famly.ui.theme.MutedTextColor
+import com.tome.famly.ui.viewmodels.TaskListViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -65,7 +70,7 @@ import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit) {
+fun TasksListsScreen(navController: NavController, viewModel: TaskListViewModel = viewModel()) {
     var showBottomSheet by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -74,7 +79,7 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit)
                 title = "Task Lists",
                 titleIcon = Icons.Outlined.CheckCircle,
                 titleIconColor = CustomOrange,
-                onBackClick = onBackClick
+                onBackClick = { navController.popBackStack() }
             )
         },
         floatingActionButton = {
@@ -89,7 +94,7 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit)
         }
     ) { innerPadding ->
         var newListName by remember { mutableStateOf("") }
-        TaskLists( modifier = Modifier.padding(innerPadding), onTaskListClick = onTaskListClick)
+        TaskLists( modifier = Modifier.padding(innerPadding), navController = navController)
 
         if (showBottomSheet) {
             ModalBottomSheet(
@@ -105,16 +110,19 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit)
                     verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().drawBehind {
-                            val strokeWidth = 1.dp.toPx()
-                            val y = size.height - strokeWidth / 2
-                            drawLine(
-                                color = Color.Gray,
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y),
-                                strokeWidth = strokeWidth
-                            )
-                        }.padding(bottom = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .drawBehind {
+                                val strokeWidth = 1.dp.toPx()
+                                val y = size.height - strokeWidth / 2
+                                drawLine(
+                                    color = Color.Gray,
+                                    start = Offset(0f, y),
+                                    end = Offset(size.width, y),
+                                    strokeWidth = strokeWidth
+                                )
+                            }
+                            .padding(bottom = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
 
@@ -142,7 +150,13 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit)
                         )
                         Text("Give your task list a memorable name", style = MaterialTheme.typography.labelMedium, color = MutedTextColor, modifier = Modifier.padding(top = 6.dp))
                     }
-                    Button(onClick = { showBottomSheet = false },
+                    Button(onClick = {
+                        if (newListName.isNotBlank()) {
+                            viewModel.addTaskList(newListName)
+                            newListName = ""
+                            showBottomSheet = false
+
+                        } },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -158,29 +172,64 @@ fun TasksListsScreen(onBackClick: (() -> Unit)?, onTaskListClick: (Int) -> Unit)
 }
 
 @Composable
-fun TaskLists(modifier: Modifier = Modifier, onTaskListClick: (Int) -> Unit){
-    LazyColumn(modifier = modifier.fillMaxSize().background(BackgroundColor)) {
-        items(mockTasks) { task ->
+fun TaskLists(modifier: Modifier = Modifier, navController: NavController){
+    val viewModel: TaskListViewModel = viewModel()
+    val lists by viewModel.lists
+
+    LaunchedEffect(Unit) {
+        viewModel.loadLists()
+    }
+
+    LazyColumn(modifier = modifier
+        .fillMaxSize()
+        .background(BackgroundColor)) {
+        items(lists) { list ->
             TaskCard(
-                id = task.id,
-                name = task.title,
-                uncheckedItems = task.items.count { !it.isChecked.value },
-                resetDateTime = task.nextResetDateTimeLocal(),
-                onClick = { onTaskListClick(task.id) }
+                id = list.id,
+                name = list.title,
+                uncheckedItems = list.items.count { !it.isChecked },
+                resetDateTime = list.nextResetDateTimeLocal(),
+                navController = navController
             )
         }
     }
 }
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TaskCard(id: Int, name: String, uncheckedItems: Int, resetDateTime: LocalDateTime, onClick: (Int) -> Unit) {
+fun TaskCard(id: String, name: String, uncheckedItems: Int, resetDateTime: LocalDateTime, navController: NavController, viewModel: TaskListViewModel = viewModel()) {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val diffHours = now.date.daysUntil(resetDateTime.date) * 24 + (resetDateTime.hour - now.hour)
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete list?") },
+            text = { Text("Are you sure you want to delete '$name'") },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.deleteTaskList(id)
+                    showDeleteDialog = false
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding()
-            .clickable { onClick(id) },
+            .combinedClickable(
+                onClick = { navController.navigate("${Routes.TaskListDetail.name}/$id") },
+                onLongClick = { showDeleteDialog = true }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = Color.White,
         ),
@@ -253,13 +302,5 @@ fun TaskCard(id: Int, name: String, uncheckedItems: Int, resetDateTime: LocalDat
             }
 
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun TasksListsScreenPreview() {
-    FamlyTheme {
-        TasksListsScreen(onBackClick = {}, onTaskListClick = {})
     }
 }

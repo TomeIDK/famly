@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,8 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -37,6 +36,7 @@ import com.tome.famly.R
 import com.tome.famly.data.CurrentUser
 import com.tome.famly.data.FirestoreDB
 import com.tome.famly.ui.navigation.Routes
+import kotlinx.coroutines.delay
 
 @Composable
 fun LoginScreen(navController: NavController) {
@@ -45,6 +45,20 @@ fun LoginScreen(navController: NavController) {
     val context = LocalContext.current as MainActivity
     val auth = FirebaseAuth.getInstance()
     var user by remember { mutableStateOf(auth.currentUser) }
+
+
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun showMessage(msg: String) {
+        errorMessage = msg
+    }
+
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            delay(3000)
+            errorMessage = null
+        }
+    }
 
     // listen for auth changes
     DisposableEffect(auth) {
@@ -62,10 +76,24 @@ fun LoginScreen(navController: NavController) {
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data!!)
         try {
             val account = task.getResult(ApiException::class.java)
-            val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-            auth.signInWithCredential(credential)
+            account?.idToken?.let { idToken ->
+                val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+                auth.signInWithCredential(credential)
+                    .addOnCompleteListener { authResult ->
+                        if (authResult.isSuccessful) {
+                            user = auth.currentUser
+                        } else {
+                            showMessage("Firebase sign-in failed: ${authResult.exception?.localizedMessage}")
+                        }
+                    }
+            } ?: showMessage("Failed to get Google ID token")
         } catch (e: ApiException) {
-            // handle error
+            when (e.statusCode) {
+                GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> showMessage("Sign-in cancelled")
+                GoogleSignInStatusCodes.SIGN_IN_FAILED -> showMessage("Sign-in failed")
+                GoogleSignInStatusCodes.NETWORK_ERROR -> showMessage("Network error")
+                else -> showMessage("Unexpected error: ${e.statusCode}")
+            }
         }
     }
 
@@ -89,8 +117,11 @@ fun LoginScreen(navController: NavController) {
                     style = MaterialTheme.typography.headlineMedium
                 )
                 Button(onClick = {
-                    val intent = context.googleSignInClient.signInIntent
-                    launcher.launch(intent)
+                    context.googleSignInClient.signOut().addOnCompleteListener {
+                        val intent = context.googleSignInClient.signInIntent
+                        launcher.launch(intent)
+                    }
+
                 },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
